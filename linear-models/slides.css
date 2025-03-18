@@ -1,0 +1,93 @@
+/* Pretty print */
+  
+/* line 600, ../scss/default.scss */
+.prettyprint .com {
+  /* a comment */
+    color: green;
+  font-style: italic;
+}
+
+/* line 604, ../scss/default.scss */
+.prettyprint .lit {
+  /* a literal value */
+    color: black;
+}
+
+/* line 609, ../scss/default.scss */
+.prettyprint .pun,
+.prettyprint .opn,
+.prettyprint .clo {
+  color: red;
+}
+
+body {
+   background-image: url('../gfx/bg4.jpg');
+  background-size: cover; /* Adjust the image size as needed */
+  background-repeat: no-repeat;
+  background-attachment: fixed; /* Keeps the image fixed while scrolling */
+}
+
+/* Apply background image to the first slide */
+slides > slide:nth-child(1) {
+  background-image: url('../gfx/ntu1.jpg');
+  background-size: cover;
+  background-position: center;
+}
+
+
+/* line 618, ../scss/default.scss */
+.prettyprint .pln {
+  color: blue;
+}
+
+/* Apply a default background color to all slides */
+slides > slide {
+  background-color: #f0f0f0; /* Light gray background color */
+}
+
+
+/* Reduce the opacity of the background image */
+slides > slide:nth-child(1)::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: -1;
+}
+
+/* Change the font color of text on the first slide to white */
+slides > slide:nth-child(1) h1,
+slides > slide:nth-child(1) h2,
+slides > slide:nth-child(1) p {
+  color: white;
+}
+
+slides > slide:not(.nobackground):before {
+  width: 128px;
+  height: 33px;
+  background-size: 100px 30px;
+}
+
+
+
+
+.gdbar img {
+  width: 240px !important;
+  height: 54px !important;
+  margin: 8px 8px;
+  position: absolute;
+}
+
+.gdbar {
+  width: 350px !important;
+  height: 70px !important;
+}
+
+.smalltable .table{
+  font-size: 18px;
+}
+
+pre {
+  font-size: 15px;
+}
+
