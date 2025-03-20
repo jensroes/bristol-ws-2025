@@ -3,7 +3,7 @@ title: 'Linear mixed-effects models'
 author: '<span style="font-size: 40px; font-face: bold">Jens Roeser</span>'
 output: 
   ioslides_presentation:
-    incremental: true
+    incremental: false
     transition: slower
     widescreen: true
     css: slides.css
@@ -21,14 +21,14 @@ library(knitr)
 library(kableExtra)
 library(patchwork)
 library(magick)
+library(brms)
+library(ggthemes)
+library(mixtools)
 theme_set(theme_bw(base_size = 18) +
             theme(legend.position = "top", 
                   legend.justification = "right",
                   panel.grid = element_blank()))
 ```
-
-
-
 
 
 ## In case you weren't around on Monday
@@ -115,7 +115,7 @@ $$
 - Lower case letters indicate observed variables.
 - "$\sim$": "is proportional to" / "is a function of"
 - $\mathcal{N}$: univariate normal distributed probability model; i.e. the underlying process that describes the nature of our data.
-- **Population parameters** are represented as Greek letters; i.e. mean $\mu$ and variance $\sigma^2$ (parameters depend on probability model and parametrisation).
+- **Population parameters** are represented as Greek letters; i.e. mean $\mu$ and variance $\sigma^2$ (parameters depend on probability model and parameterisation).
 </div>
 
 
@@ -318,6 +318,10 @@ beta_1 <- 50
 sigma <- 100
 ```
 
+
+`lm` uses maximum likelihood estimation to determine for which set of parameter values are the data most likely.
+
+
 ```{r}
 # Normal linear model of simulated data
 model <- lm(y ~ x, data = sim_data)
@@ -330,43 +334,26 @@ sigma(model) # Standard deviation
 ```
 
 
-<!-- <div style="float: right; width: 55%;"> -->
-
-<!-- ```{r echo = F, out.width="100%", fig.cap="Estimated cell means with 95% CIs."} -->
-<!-- plot_sim <- emmeans::emmeans(model, specs = "x") %>%  -->
-<!--   as_tibble() %>%  -->
-<!--   ggplot(aes(x = x,  -->
-<!--              y = emmean, -->
-<!--              ymin = lower.CL, -->
-<!--              ymax = upper.CL)) + -->
-<!--   geom_pointrange() + -->
-<!--   coord_cartesian(ylim = c(575, 650)) + -->
-<!--   scale_y_continuous(breaks = seq(500, 700, 10)) + -->
-<!--   labs(y = "y") -->
-<!-- plot_sim -->
-<!-- ``` -->
-
-<!-- </div> -->
-
-## Simulation: exercise
+## Exercise
 
 Check scripts 
 
 - `exercises/normal_model_simulation_1.R`
 - `exercises/normal_model_simulation_2.R`
 
-You will need to complete the code in those scripts. Observe how changing the number of observations affects the model estimates.
+Observe how changing the number of observations affects the model estimates.
 
 ## Real data 
 
 - In real life we don't know the true parameter values.
 - We also don't know the true process that generates the data.
-- For the simulated data we know that the process: 
-    - a normal distribution because `rnorm` samples normally distributed data
-    - both groups have the same (equal) variance because the value for `sigma` was the same.
-- We can use linear models to estimate parameter values from the data (i.e. we make assumptions about the process that generates the data).
-- Maximum likelihood estimation: for which set of parameter values are the data most likely.
+- For the simulated data we know the process that generated the data. 
+    - normal distribution because `rnorm` samples normally distributed data
+    - both groups have the same variance because `sigma` was the same.
+- We can use linear models to estimate parameter values from the data by which we make assumptions about the process that generates the data.
 
+
+# Running example: @martin2010planning 
 
 
 ## @martin2010planning data (Experiment 3a)
@@ -857,7 +844,7 @@ Complete script `linear-models/exercises/mixed_effects_model_brms.R`
 
 Frequentist mixed-effects models
 
-```{r eval=F}
+```{r eval=T}
 library(lme4)
 fit_lmer <- lmer(rt ~ nptype + (nptype|ppt) + (nptype|item), data = data)
 ```
@@ -869,13 +856,8 @@ library(brms)
 fit_brm <- brm(rt ~ nptype + (nptype|ppt) + (nptype|item), data = data)
 ```
 
-```{r eval = F, echo = F}
-saveRDS(object = fit_brm, file = "../stanout/fit_brm.rds", compress = "xz")
-```
-
-
 ```{r eval = T, echo = F}
-fit_brm <- readRDS(file = "../stanout/fit_brm.rds")
+fit_brm <- readRDS(file = "../models/fit_brm.rds")
 ```
 
 
@@ -1450,6 +1432,13 @@ You will refit our model with more informative priors in the next script.
 
 # Hypothesis testing | see e.g. @nicenboim2016statistical for a tutorial
 
+## What results do I report?
+
+- Summary of posterior parameter value estimates
+- To test a hypothesis of parameter estimate (e.g. difference between groups, interactions, change in outcome):
+  - ROPE
+  - Savage-Dickey Bayes Factor: for comparison of nested models
+- For comparison of models with different probability functions: Cross-validation (leave-one-out)
 
 ## Posterior probability distribution
 
@@ -1457,7 +1446,7 @@ You will refit our model with more informative priors in the next script.
 >- Get posterior of slope $\beta$ (difference between conditions)
 
 ```{r echo = T}
-beta <- pas_draws_df(fit_brm) %>% pull(b_nptypesimple)
+beta <- as_draws_df(fit_brm) %>% pull(b_nptypesimple)
 ```
 
 
@@ -1524,11 +1513,11 @@ quantile(beta, probs = c(0.025, 0.975))
 
 ```{r fig.height=4.5, fig.width=5.5}
 ggplot(data = NULL, aes(x = beta)) +
-  geom_histogram(alpha = .55) +
+  geom_histogram(alpha = .55, bins = 50, position = "identity", show.legend = F) +
   labs(x = bquote("Estimated effect"~hat(beta))) +
-  geom_errorbarh(aes(y = 65, xmin = quantile(beta, probs = c(0.025))
+  geom_errorbarh(aes(y = 50, xmin = quantile(beta, probs = c(0.025))
 , xmax =  quantile(beta, probs = c(0.975))), color = "darkred", size = 1.5, ) +
-  annotate("text", x = 15, y = 90, label = "95% PI", colour = "darkred")
+  annotate("text", x = 15, y = 55, label = "95% PI", colour = "darkred")
 ```
 </div>
 
@@ -1542,7 +1531,7 @@ ggplot(data = NULL, aes(x = beta)) +
 quantile(beta, probs = c(0.025, 0.975))
 ```
 
->- 89% probability interval [@mcelreath2016statistical]
+>- 89% probability interval [@mcelreath2020statistical]
 
 ```{r echo = T}
 quantile(beta, probs = c(0.055, 0.945))
@@ -1554,9 +1543,9 @@ quantile(beta, probs = c(0.055, 0.945))
 
 ```{r fig.height=4.5, fig.width=5.5}
 ggplot(data = NULL, aes(x = beta)) +
-  geom_histogram(alpha = .55) +
+  geom_histogram(alpha = .55, bins = 50, position = "identity", show.legend = F) +
   labs(x = bquote("Estimated effect"~hat(beta))) +
-  geom_errorbarh(aes(y = 65, xmin = quantile(beta, probs = c(0.055))
+  geom_errorbarh(aes(y = 75, xmin = quantile(beta, probs = c(0.055))
 , xmax =  quantile(beta, probs = c(0.945))), color = "darkred", size = 1.5, ) +
   annotate("text", x = 15, y = 90, label = "89% PI", colour = "darkred")
 ```
@@ -1573,7 +1562,7 @@ ggplot(data = NULL, aes(x = beta)) +
 mean(beta < 0)
 ```
 
-- See exercises: `linear-models/exercises/hypothesis_testing_1.R`
+- See exercises: `linear-models/exercises/hypothesis_testing_post.R`
 
 </div>
 
@@ -1582,7 +1571,7 @@ mean(beta < 0)
 ```{r fig.height=4.5, fig.width=5.5}
 beta2 <- beta[beta < 0]
 ggplot(data = NULL, aes(x = beta, fill = beta > 0)) +
-  geom_histogram(alpha = .55, position = "identity", show.legend = F) +
+  geom_histogram(alpha = .55, bins = 50, position = "identity", show.legend = F) +
   scale_fill_manual(values = c("darkred", "grey")) +
   geom_vline(xintercept = 0, colour = "grey20", linetype = "dotted") +
   labs(x = bquote("Estimated effect"~hat(beta))) 
@@ -1605,7 +1594,10 @@ mean(beta < -10)
 
 
 
+# ROPE | e.g. @kruschke2010believe
+
 ## ROPE
+
 
 <div style="float: left;width: 4%">
 
@@ -1625,7 +1617,7 @@ There is nothing really special about 0.
 
 ```{r fig.height=4.5, fig.width=5.5}
 ggplot(data = NULL, aes(x = beta, fill = beta > -10)) +
-  geom_histogram(alpha = .55,  position = "identity", show.legend = F) +
+  geom_histogram(alpha = .55, bins = 50, position = "identity", show.legend = F) +
   geom_vline(xintercept = -10, colour = "grey20", linetype = "dotted") +
   scale_fill_manual(values = c("darkred", "grey")) +
   labs(x = bquote("Estimated effect"~hat(beta))) 
@@ -1638,11 +1630,10 @@ ggplot(data = NULL, aes(x = beta, fill = beta > -10)) +
 ## ROPE
 
 <div style="float: left;width: 55%">
-  
-- Region of practical equivalence: range of values that are practically equivalent [@kruschke2010believe; @kruschke2011bayesian].
+
 - Point values don't represent our beliefs about what the null hypothesis is like: $H_0 = 0$
-- The ROPE is the range of values that are practically equivalent to a null effect.
-- Define region that is equivalent to no effect: all values in interval [-5, 5] 
+- Region of practical equivalence: range of values that are practically equivalent to a null effect[@kruschke2010believe; @kruschke2011bayesian].
+- Define region that is equivalent to no effect: all values in an interval of [-5, 5] msecs
 
 </div>
 
@@ -1650,8 +1641,8 @@ ggplot(data = NULL, aes(x = beta, fill = beta > -10)) +
 
 ```{r fig.height=4.5, fig.width=4.5}
 ggplot(data = NULL, aes(x = beta)) +
-  geom_histogram(alpha = .55,  position = "identity", show.legend = F) +
-  labs(x = bquote("Estimated effect"~hat(beta)), title = "Posterior probability distribution") 
+  geom_histogram(alpha = .55, bins = 50, position = "identity", show.legend = F) +
+  labs(x = bquote("Estimated effect"~hat(beta))) 
 ```
 </div>
 
@@ -1660,10 +1651,11 @@ ggplot(data = NULL, aes(x = beta)) +
 
 <div style="float: left;width: 55%">
 
-> - Region of practical equivalence: range of values that are practically equivalent [@kruschke2010believe; @kruschke2011bayesian].
-> - Point values don't represent our beliefs about what the null hypothesis is like: $H_0 = 0$
-> - The ROPE is the range of values that are practically equivalent to a null effect.
-> - Define region that is equivalent to no effect: all values in interval [-5, 5] 
+
+- Point values don't represent our beliefs about what the null hypothesis is like: $H_0 = 0$
+- Region of practical equivalence: range of values that are practically equivalent to a null effect[@kruschke2010believe; @kruschke2011bayesian].
+- Define region that is equivalent to no effect: all values in an interval of [-5, 5] msecs
+
 
 ```{r echo = T}
 library(bayestestR)
@@ -1675,8 +1667,8 @@ rope(beta, range = c(-5, 5))
 
 ```{r fig.height=4.5, fig.width=4.5}
 ggplot(data = NULL, aes(x = beta)) +
-  geom_histogram(alpha = .55,  position = "identity", show.legend = F) +
-  labs(x = bquote("Estimated effect"~hat(beta)), title = "Posterior probability distribution") 
+  geom_histogram(alpha = .55, bins = 50, position = "identity", show.legend = F) +
+  labs(x = bquote("Estimated effect"~hat(beta))) 
 ```
 </div>
 
@@ -1686,10 +1678,12 @@ ggplot(data = NULL, aes(x = beta)) +
   
 <div style="float: left;width: 55%">
   
-> - Region of practical equivalence: range of values that are practically equivalent [@kruschke2010believe; @kruschke2011bayesian].
-> - Point values don't represent our beliefs about what the null hypothesis is like: $H_0 = 0$
-> - The ROPE is the range of values that are practically equivalent to a null effect.
-> - Define region that is equivalent to no effect: all values in interval [-5, 5] 
+
+- Point values don't represent our beliefs about what the null hypothesis is like: $H_0 = 0$
+- Region of practical equivalence: range of values that are practically equivalent to a null effect[@kruschke2010believe; @kruschke2011bayesian].
+- Define region that is equivalent to no effect: all values in an interval of [-5, 5] msecs
+
+
 
 ```{r echo = T}
 library(bayestestR)
@@ -1702,11 +1696,11 @@ rope(beta, range = c(-5, 5))
 
 ```{r fig.height=4.5, fig.width=4.5}
 ggplot(data = NULL, aes(x = beta, fill = beta > -5 & beta < 5)) +
-  geom_histogram(alpha = .55,  position = "identity", show.legend = F) +
+  geom_histogram(alpha = .55, bins = 50, position = "identity", show.legend = F) +
   geom_vline(xintercept = 5, colour = "grey20", linetype = "dotted") +
   geom_vline(xintercept = -5, colour = "grey20", linetype = "dotted") +
   scale_fill_manual(values = c("grey", "darkred")) +
-  labs(x = bquote("Estimated effect"~hat(beta)), title = "Posterior probability distribution") 
+  labs(x = bquote("Estimated effect"~hat(beta))) 
 ```
 </div>
 
@@ -1722,7 +1716,7 @@ ggplot(data = NULL, aes(x = beta, fill = beta > -5 & beta < 5)) +
 
 ```{r echo = T}
 library(bayestestR)
-rope(beta, range = c(-Inf, 5))
+rope(beta, range = c(-10, Inf))
 ```
 </div>
   
@@ -1731,11 +1725,11 @@ rope(beta, range = c(-Inf, 5))
 <div style="float: left;width: 45%">
   
 ```{r fig.height=4.5, fig.width=4.5}
-ggplot(data = NULL, aes(x = beta, fill = beta > -Inf & beta < 5)) +
-  geom_histogram(alpha = .55,  position = "identity", show.legend = F) +
-  geom_vline(xintercept = 5, colour = "grey20", linetype = "dotted") +
+ggplot(data = NULL, aes(x = beta, fill = beta > -10 & beta < Inf)) +
+  geom_histogram(alpha = .55, bins = 50, position = "identity", show.legend = F) +
+  geom_vline(xintercept = -10, colour = "grey20", linetype = "dotted") +
   scale_fill_manual(values = c("grey", "darkred")) +
-  labs(x = bquote("Estimated effect"~hat(beta)), title = "Posterior probability distribution") 
+  labs(x = bquote("Estimated effect"~hat(beta))) 
 ```
 </div>
   
@@ -1744,31 +1738,31 @@ ggplot(data = NULL, aes(x = beta, fill = beta > -Inf & beta < 5)) +
   
 ## ROPE
   
->- Determine ROPE to assess the uncertainty of effect size [@makowski2019bayestestr]
->- Calculate the standardised effect size $\delta$ from posterior: $\delta = \frac{\beta}{\sigma}$ 
->- ROPE of [-0.1, 0.1] is the range of negligible effect sizes [@cohn1988statistical; @kruschke2018rejecting]. 
+- Determine ROPE to assess the uncertainty of effect size [@makowski2019bayestestr]
+- Calculate the standardised effect size $\delta$ from posterior: $\delta = \frac{\beta}{\sigma}$ 
+- ROPE of [-0.1, 0.1] is the range of negligible effect sizes [@cohn1988statistical; @kruschke2018rejecting]. 
 
 ## ROPE
 
 
->- Determine ROPE to assess the uncertainty of effect size [@makowski2019bayestestr]
->- Calculate the standardised effect size $\delta$ from posterior: $\delta = \frac{\beta}{\sigma}$ 
->- ROPE of [-0.1, 0.1] is the range of negligible effect sizes [@cohn1988statistical; @kruschke2018rejecting]. 
+- Determine ROPE to assess the uncertainty of effect size [@makowski2019bayestestr]
+- Calculate the standardised effect size $\delta$ from posterior: $\delta = \frac{\beta}{\sigma}$ 
+- ROPE of [-0.1, 0.1] is the range of negligible effect sizes [@cohn1988statistical; @kruschke2018rejecting]. 
 
 ```{r echo = T}
-sigma <- posterior_samples(fit_brm, pars = "sigma") %>% pull()
+sigma <- as_draws_df(fit_brm) %>% pull(sigma)
 delta <- beta / sigma
 ```
 
 ```{r echo = T}
-mean(delta) # small effect (see Cohen's d)
+abs(mean(delta)) # very small effect (see Cohen's d)
 ```
 
 ## ROPE
 
->- Determine ROPE to assess the uncertainty of effect size [@makowski2019bayestestr]
->- Calculate the standardised effect size $\delta$ from posterior: $\delta = \frac{\beta}{\sigma}$ 
->- ROPE of [-0.1, 0.1] is the range of negligible effect sizes [@cohn1988statistical;@kruschke2018rejecting]. 
+- Determine ROPE to assess the uncertainty of effect size [@makowski2019bayestestr]
+- Calculate the standardised effect size $\delta$ from posterior: $\delta = \frac{\beta}{\sigma}$ 
+- ROPE of [-0.1, 0.1] is the range of negligible effect sizes [@cohn1988statistical;@kruschke2018rejecting]. 
 
 ```{r echo = T}
 rope(delta, range = c(-0.1, 0.1)) 
@@ -1777,6 +1771,9 @@ rope(delta, range = c(-0.1, 0.1))
 - The ROPE value indicates the extent to which the posterior cannot rule out a negligible effect. 
 - A meaningful effect size should have a small proportion of posterior samples within the ROPE. 
 
+## Exercise
+
+Complete script `linear-models/exercises/hypothesis_testing_rope.R`
 
 
 
@@ -1820,7 +1817,7 @@ $$
 
 >- How much more probable is one model (hypothesis) over the other?
 >- How convinced should we be about the evidence for our hypothesis $H_1$ as opposed to, say, a null hypothesis $H_0$?
->- Savage-Dickey density ratio [@jeffreys1961theory; @dickey1970weighted]:
+>- Savage-Dickey density ratio for nested models [@jeffreys1961theory; @dickey1970weighted]:
 >- Height of the posterior density at zero compared to the height of the prior density at zero.
 </div>
 
@@ -1985,14 +1982,14 @@ ggplot(pd, aes(x = x, y = value, colour = name)) +
 
 - More informative priors give more weight to $H_0$.
 - Given such a prior, a posterior that favours $H_1$ would be more convincing: BFs capture this.
-- Regularising (skeptical) priors prevent the model to get overexcited by the sample [his words: @mcelreath2016statistical].
+- Regularising (skeptical) priors prevent the model to get overexcited by the sample [his words: @mcelreath2020statistical].
 - If in doubt use weakly informative priors like student-t distributions that allow for larger tails, e.g. `student_t(3, 0, 100)`
 
 
-## Bayes Factor with `hypothesis()`
+## Exercise
 
-- Explore `hypothesis()` in the exercise: `linear-models/exercises/hypothesis_testing_1.R`
-- Bonus: explore the Savage-Dickey method in `linear-models/exercises/hypothesis_testing_3.R`
+- Explore `hypothesis()` in the exercise: `linear-models/exercises/hypothesis_testing_bf_1.R`
+- Bonus: explore the Savage-Dickey method in `linear-models/exercises/hypothesis_testing_bf_2.R`
 
 
 
@@ -2018,26 +2015,606 @@ hypothesis(fit_brm, "nptypesimple < -10")
 ```
 
 
-
-## Next bits
-
-- other probability models: lognormal, shifted_lognormal, mixture, probably as demo
-- show changes in fit
-- model comparisons and cross-validation
+# Compare probability models of rt data | see e.g. @matzke2009psychological; @roeser2024no
 
 
 
 
 
 
+# Families of distributions
+
+
+
+## Families of distributions 
+
+\
+
+>"Models are devices that connect theories to data.  A model is an instantiation of a theory [...]" [@rouder2016interplay p. 2] 
+
+\
+
+
+- Our models describe how we understand reality.
+- Model allows us to describe reality qualitatively (with their parameters) and quantitatively (parameter value estimates).
+- Interpretation of parameters depends on data-modeling context.
+- At minimum, distribution families (probability models) depend on data type.
+
+
+## Families of distributions (some important ones)
+
+- **Gaussian**: data come from normal distribution 
+
+```{r eval=F, echo=T}
+fit <- brm(outcome ~ predictor + (1|participant), data = data, family = gaussian())
+```
+
+
+## Families of distributions (some important ones)
+
+- **Gaussian**: data come from normal distribution 
+- **Bernoulli**: binomial outcomes (yes / no; correct / incorrect) [@winter2021poisson]
+
+```{r eval=F, echo=T}
+fit <- brm(outcome ~ predictor + (1|participant), data = data, family = bernoulli())
+```
+
+## Families of distributions (some important ones)
+
+- **Gaussian**: data come from normal distribution 
+- **Bernoulli**: binomial outcomes (yes / no; correct / incorrect) [@winter2021poisson]
+- **Poisson**: count data (number of words / mistakes)
+
+
+```{r eval=F, echo=T}
+fit <- brm(outcome ~ predictor + (1|participant), data = data, family = poisson())
+```
+
+## Families of distributions (some important ones)
+
+- **Gaussian**: data come from normal distribution 
+- **Bernoulli**: binomial outcomes (yes / no; correct / incorrect)
+- **Poisson**: count data (number of words / mistakes) [@winter2021poisson]
+- **Zero-inflated Poisson**: count data with lots of zeros (number of typos per word)
+
+
+```{r eval=F, echo=T}
+fit <- brm(outcome ~ predictor + (1|participant), data = data, family = zero_inflated_poisson())
+```
+
+
+## Families of distributions (some important ones)
+
+- **Gaussian**: data come from normal distribution 
+- **Bernoulli**: binomial outcomes (yes / no; correct / incorrect)
+- **Poisson**: count data (number of words / mistakes) [@winter2021poisson]
+- **Zero-inflated Poisson**: count data with lots of zeros (number of typos per word)
+- **Cumulative**: ordinal (ordered categorical) data [@burkner2019ordinal] (Likert scales)
+
+
+```{r eval=F, echo=T}
+fit <- brm(outcome ~ predictor + (1|participant), data = data, family = cumulative()) # or acat, sratio
+```
+
+
+## Families of distributions (some important ones)
+
+- **Gaussian**: data come from normal distribution 
+- **Bernoulli**: binomial outcomes (yes / no; correct / incorrect)
+- **Poisson**: count data (number of words / mistakes) [@winter2021poisson]
+- **Zero-inflated Poisson**: count data with lots of zeros (number of typos per word)
+- **Cumulative**: ordinal (ordered categorical) data [@burkner2019ordinal] (Likert scales)
+- **Lognormal**: zero bound data with positive skew; also skewed / shifted (log)-Normal, Wiener Diffusion models etc. [for RT data; @matzke2009psychological]
+
+
+```{r eval=F, echo=T}
+fit <- brm(outcome ~ predictor + (1|participant), data = data, family = lognormal())
+```
+
+
+## Families of distributions (some important ones)
+
+- **Gaussian**: data come from normal distribution 
+- **Bernoulli**: binomial outcomes (yes / no; correct / incorrect)
+- **Poisson**: count data (number of words / mistakes) [@winter2021poisson]
+- **Zero-inflated Poisson**: count data with lots of zeros (number of typos per word)
+- **Cumulative**: ordinal (ordered categorical) data [@burkner2019ordinal] (Likert scales)
+- **Lognormal**: zero bound continuous data with positive skew
+- **Ex-Gaussian**: continuous data with positive skew 
+
+
+```{r eval=F, echo=T}
+fit <- brm(outcome ~ predictor + (1|participant), data = data, family = exgaussian())
+```
+
+
+
+
+## Probability models of rt data
+
+So far we used a Gaussian model which showed a poor fit to the data.
+
+```{r echo = F}
+pp_check(fit_brm, nsamples = 100)
+```
+
+Alternative models: skewed normal, shifted (log)normal, Wiener Diffusion models, ex-Gaussian, mixture of lognormal etc. [see @matzke2009psychological; @roeser2024no].
+
+
+
+
+## Gaussian
+
+$$y \sim \mathcal{N}(\mu, \sigma^2)$$
+
+- Data generating process can be described as a normal distribution with mean $\mu$ and standard deviation $\sigma$.
+
+
+
+## Lognormal
+
+
+
+```{r echo=F}
+p_rt <- ggplot(data, aes(x = rt)) +
+  geom_density() +
+  labs(x = "rt") +
+  scale_x_continuous(limits = c(100, 10000), breaks = c(0, 2500, 5000, 7500, 10000))
+
+p_log_rt <- ggplot(data, aes(x = rt)) +
+  geom_density() +
+  scale_x_log10(limits = c(100, 10000), breaks = c(0, 100, 300, 1000, 3000, 10000)) +
+  labs(y = "", x = "log(rt)")
+
+p_rt + p_log_rt 
+```
+
+
+## Lognormal
+
+
+$$
+\log(y) \sim \mathcal{N}(\mu, \sigma^2)
+$$
+
+- Often used to address positive skew; e.g. response times [@baa08book]
+- Log-values are only defined if $y \in [0, \infty]$
+- De-emphasize large values over small values.
+- Models the percentage change and not absolute differences:
+  - Rather than saying "keystroke intervals are 40 msecs slower", you say "keystrokes are 7% slower". 
+  - Difference of 40 msecs can be huge for fast typing but negligible for pauses around 10 secs. 
+
+
+## Shifted lognormal
+
+$$
+\log(y - \exp(\text{ndt})) \sim \mathcal{N}(\mu, \sigma^2)
+$$
+
+
+- Variation of the lognormal distribution: a zero shift would be equivalent to lognormal
+- Includes a horizontal shift.
+- Useful for modeling rt data because they are typically not just
+  - right-skewed
+  - non-negative 
+- But also
+  - positively shifted: there is a minimum time required for any response
+
+Accounts for a minimum rt: The shift parameter represents the minimum possible rt, accounting for the fact that no response can be instantaneous.
+
+## Shifted lognormal (simulated data)
+
+```{r echo=F}
+# Set seed for reproducibility
+set.seed(123)
+
+# Parameters
+n <- 1000
+mu <- 6.5                # Mean of the log-transformed values
+sigma <- .6            # Std deviation of the log-transformed values
+shift <- 500             # Shift parameter (non-decision time)
+
+# Generate Shifted Lognormal Data
+rt <- shift + rlnorm(n, meanlog = mu, sdlog = sigma)
+
+# Create a data frame
+data <- data.frame(rt = rt)
+
+# Calculate key points
+mu_rt <- exp(mu) + shift  # Mean RT in original space
+sigma_rt <- (exp(sigma^2) - 1) * exp(2 * mu + sigma^2)  # Variance in original space
+mean_shift <- mean(rt)
+
+# Plot the distribution with parameters
+ggplot(data, aes(x = rt)) +
+  geom_density(alpha = 0.3) +
+  geom_vline(xintercept = shift, color = "#e31a1c", linetype = "dashed", size = .5, label = "shift (ndt)") +
+  geom_vline(xintercept = mu_rt, color = "#33a02c", linetype = "dashed", size = .5, label = "mean in log space") +
+  geom_vline(xintercept = mean(rt), color = "#ff7f00", linetype = "dashed", size = .5, label = "mean rt") +
+  annotate("text", x = shift - 100, y = 0.8 * max(density(rt)$y), 
+           label = "shift (ndt)", color = "#e31a1c", size = 4, angle = 90) +
+  annotate("text", x = mu_rt - 100, y = 0.6 * max(density(rt)$y), 
+           label = "mean in log space", color = "#33a02c", size = 4, angle = 90) +
+  annotate("text", x = mean_shift + 100, y = 0.2 * max(density(rt)$y), 
+           label = "mean rt", color = "#ff7f00", size = 4, angle = 90) +
+  
+  # Axis labels and theme
+  labs(x = "rt") +
+  scale_x_continuous(limits = c(0, 5000)) +
+  theme(axis.text.y = element_blank(),
+        axis.title.y = element_blank(),
+        axis.ticks.y = element_blank())
+
+```
+
+
+
+## Exercise
+
+Fit another probability model
 
 
 
 
 
+# Model comparisons | chapter 11 in @gelman2020regression; chapter 6 in @mcelreath2020statistical
+
+ 
+
+## The Gaussian model showed poor fit to data
+
+```{r echo = F}
+pp_check(fit_brm, nsamples = 100)
+```
+
+
+
+
+
+## Model comparisons
+
+- How accurately does the model predict new data.
+- $R^2$ et al.: more complex models are generally better ( $R^2$ can't go down).
+- **Overfitting:** models with more parameters can make unreasonable predictions.
+- Generalisations to data that were used to fit the model are over optimistic [@gelman2020regression].
+- We will look at both fit and predictive performance of the model.
+  
+
+
+
+## Compare probability models of rt data
+
+```{r echo = F, eval = F}
+files <- list.files("../models", full.names = T)
+files <- files[!str_detect(string = files, pattern = "compar|brm.rds")]
+plots <- list()
+
+for(file in files){
+  fit <- readRDS(file)
+  title <- fit$family$family
+  plots[[file]] <- pp_check(fit, ndraws = 100) +
+    labs(title = str_c("Distribution: ",
+                       str_to_sentence(str_replace(title, "_", " "))))
+}
+
+all_plots <- wrap_plots(plots, nrow = 2) +
+  plot_layout(guides = "collect") &
+  theme(plot.title = element_text(size = 10),
+        axis.text.x = element_text(size = 8),
+        legend.position = "bottom") &
+  scale_x_continuous(limits = c(min(data$rt), max(data$rt)))
+
+file_dest <- "../plots/fit2data.pdf"
+ggsave(file_dest, plot = all_plots, width = 6, height = 4)
+```
+
+```{r}
+file_dest <- "../plots/fit2data.pdf"
+include_graphics(file_dest)
+```
+
+
+
+## Leave-One-Out (LOO) cross validation
+
+- Cross validation: performance of a model on **new** data to remove the overfitting problem.
+- Leave-One-Out (LOO) Information Criterion (LOO-IC): 
+  - Train model on $N-1$ observations 
+  - Predict remaining data point from training model.
+  - Repeat process $N$ times to predict every observation from a model of the remaining data.
+- Adding up prediction results gives an estimate of **expected log-predictive density** ($elpd$); i.e. approximation of results that would be expected for new data.
+- `loo()` uses the probability calculations to approximate LOO-IC (i.e. Pareto smoothed importance sampling) [@vehtari2015pareto; @vehtari2017practical].
+
+
+
+
+## Leave-One-Out (LOO) cross validation
+
+<div style="float: left;width: 50%;">
+
+>- Approximation involved in `loo()` uses the log posterior predictive densities: how likely is each data point given the distribution parameter estimates?
+
+</div>
+
+
+<div style="float: right;width: 50%;">
+
+```{r fig.width=5}
+log_lik(fit_brm) %>% 
+  as_tibble() %>% mutate(sample = 1:n()) %>%
+  pivot_longer(-sample, names_to = "obs", values_to = "loglik") %>%
+  group_by(obs) %>%
+  summarise(M = mean(loglik),
+            var = var(loglik)) %>%
+  mutate(obs = as.numeric(gsub(pattern = "V", replacement = "", obs))) %>%
+  ggplot(aes(x = obs, y = M, ymin = M-var, ymax = M+var)) +
+  geom_pointrange(fatten = .5) +
+  labs(x = "Observations", y = "log-posterior predictive density (with variance)")
+```
+
+</div>
+
+
+
+## Leave-One-Out (LOO) cross validation
+
+<div style="float: left;width: 50%;">
+
+>- Approximation involved in `loo()` uses the log posterior predictive densities: how likely is each data point given the distribution parameter estimates?
+
+</div>
+
+
+<div style="float: right;width: 50%;">
+
+```{r fig.width=5}
+log_lik(fit_brm) %>% 
+  as_tibble() %>% mutate(sample = 1:n()) %>%
+  pivot_longer(-sample, names_to = "obs", values_to = "loglik") %>%
+  group_by(obs) %>%
+  summarise(M = mean(loglik),
+            var = var(loglik)) %>%
+  mutate(obs = as.numeric(gsub(pattern = "V", replacement = "", obs))) %>%
+  ggplot(aes(x = obs, y = M, ymin = M-var, ymax = M+var)) +
+  geom_pointrange(fatten = .5) +
+  labs(x = "Observations", y = "log-posterior predictive density (with variance)")
+```
+
+</div>
+
+
+## Leave-One-Out (LOO) cross validation
+
+<div style="float: left;width: 50%;">
+
+```{r echo = T}
+loo(fit_brm)
+```
+
+
+</div>
+
+```{r}
+# product of n factors one for each data point: with theta being all parameters
+# for LOO CV we perform exclude each data point one at a time which is equivalent to multiplying posterior by factor 1/p(y_i \mid \theta)
+# LOO posterior excluding i is p(\theta \ mid y_{-i}) = p(\theta \mid y) / p(y_i \mid \theta) using the the 
+# LOO distribution uses the posterior simulatios for \theta and giving each simulation a weight of 1 / p(y_i \mid \theta)
+# Weighted simulations is used to approximate the predictice distribution of y_i (the held-out data point)
+# $$p(\theta \mid y) \propto p(\theta) \prod^n_{i=1} p(y_i \mid \theta)$$
+```
+
+```{r}
+# pointwise density:
+# Average likelihood of every observation in training sample
+# this is done for each set of parameters sampled from the psoterior distribution
+# Average liklihood for each obsersation
+# Sum over all observations.
+# resulting in the log-pointwise-predictive-density (lppd)
+
+# effective number of parameters is the variance in log-likelihood for every observation: p_waic
+# WAIC: -2*(lppd * p_waic)
+
+
+
+```
+
+
+
+
+
+<div style="float: right;width: 50%;">
+
+```{r fig.width=5}
+log_lik(fit_brm) %>% 
+  as_tibble() %>% mutate(sample = 1:n()) %>%
+  pivot_longer(-sample, names_to = "obs", values_to = "loglik") %>%
+  group_by(obs) %>%
+  summarise(M = mean(loglik),
+            var = var(loglik)) %>%
+  mutate(obs = as.numeric(gsub(pattern = "V", replacement = "", obs))) %>%
+  ggplot(aes(x = obs, y = M, ymin = M-var, ymax = M+var)) +
+  geom_pointrange(fatten = .5) +
+  labs(x = "Observations", y = "log-posterior predictive density (with variance)")
+```
+
+</div>
+
+
+
+## Leave-One-Out (LOO) cross validation
+
+<div style="float: left;width: 50%;">
+
+```{r echo = T}
+loo(fit_brm)
+```
+
+
+>- `elpd_loo`: sum of means (expected log predictive density)
+>- `p_loo`: sum of variances
+>- `looic`: $-2 \cdot ($`elpd_loo`$-$`p_loo`$)$ (for deviance scale)
+
+
+```{r echo = F}
+loos <- log_lik(fit_brm) %>% as_tibble() %>% mutate(sample = 1:n()) %>%
+  pivot_longer(-sample, names_to = "obs", values_to = "loglik") %>%
+  group_by(obs) %>%
+  summarise(mean_loglik = mean(exp(loglik)),
+            var_loglik = var(loglik)) %>% 
+  ungroup() %>%
+  summarise(elpd_loo = sum(log(mean_loglik)), # sum of mean log lik
+            p_loo = sum(var_loglik), # effective number of parameters
+            looic = -2 * (elpd_loo - p_loo) # Bayesian deviance
+            ) 
+```
+
+
+</div>
+
+<div style="float: right;width: 50%;">
+
+```{r fig.width=5}
+log_lik(fit_brm) %>% 
+  as_tibble() %>% mutate(sample = 1:n()) %>%
+  pivot_longer(-sample, names_to = "obs", values_to = "loglik") %>%
+  group_by(obs) %>%
+  summarise(M = mean(loglik),
+            var = var(loglik)) %>%
+  mutate(obs = as.numeric(gsub(pattern = "V", replacement = "", obs))) %>%
+  ggplot(aes(x = obs, y = M, ymin = M-var, ymax = M+var)) +
+  geom_pointrange(fatten = .5) +
+  labs(x = "Observations", y = "log-posterior predictive density (with variance)")
+```
+
+</div>
+
+
+## Leave-One-Out (LOO) cross validation
+
+<div style="float: left;width: 50%;">
+
+```{r echo = T}
+loo(fit_brm)
+```
+
+
+
+```{r}
+#difference between two deviances has a chi-squared distribution; factor of 2 scales it that way; also called the Bayesian deviance
+
+
+# N of parameters
+# number of different conjectures for causes of explanations of the data
+# How much iformation do we want the model to provide
+# how flexible is themodel in fitting the training samples
+# penalty term
+# expected distance between in-sample and out-of-sample deviance
+```
+
+>- `elpd_loo` and `looic` rarely have a direct interpretation (as opposed to `loo_R2()`): important are differences between models.
+>- `p_loo` is the effective number of parameters: how flexible is the model fit.
+
+
+
+```{r echo = F}
+loos <- log_lik(fit_brm) %>% as_tibble() %>% mutate(sample = 1:n()) %>%
+  pivot_longer(-sample, names_to = "obs", values_to = "loglik") %>%
+  group_by(obs) %>%
+  summarise(mean_loglik = mean(exp(loglik)),
+            var_loglik = var(loglik)) %>% 
+  ungroup() %>%
+  summarise(elpd_loo = sum(log(mean_loglik)), # sum of mean log lik
+            p_loo = sum(var_loglik), # effective number of parameters
+            looic = -2 * (elpd_loo - p_loo) # Bayesian deviance
+            ) 
+```
+
+
+</div>
+
+<div style="float: right;width: 50%;">
+
+```{r fig.width=5}
+log_lik(fit_brm) %>% 
+  as_tibble() %>% mutate(sample = 1:n()) %>%
+  pivot_longer(-sample, names_to = "obs", values_to = "loglik") %>%
+  group_by(obs) %>%
+  summarise(M = mean(loglik),
+            var = var(loglik)) %>%
+  mutate(obs = as.numeric(gsub(pattern = "V", replacement = "", obs))) %>%
+  ggplot(aes(x = obs, y = M, ymin = M-var, ymax = M+var)) +
+  geom_pointrange(fatten = .5) +
+  labs(x = "Observations", y = "log-posterior predictive density (with variance)")
+```
+
+</div>
+
+
+```{r}
+#loo_R2(mixturemodel)
+#bayes_R2(mixturemodel)
+
+```
+
+
+
+
+
+
+
+
+## Exercise
+
+- Complete the script `linear-models/exercises/model_comparison.R`
+- Which model has the lowest elpd score (i.e. highest predictive performance)?
+- This script, again, assumes that you have stored the posterior of four models: Gaussian, lognormal, shifted lognormal, mixture of lognormals
+
+
+
+## Model comparison
+
+```{r eval = F}
+
+mc <- readRDS("../models/model_comparison.rda")
+
+mc$diff %>%
+  as.data.frame() %>%
+  rownames_to_column("model") %>% 
+  select(model:se_elpd_loo) %>%
+  mutate(across(where(is.numeric), round, 1)) %>%
+  kable() %>%
+  kable_styling("striped", full_width = F) %>%
+  column_spec(1:5, width = "10em") %>%
+  add_footnote("`elpd_loo` is reported as $\\\\widehat{elpd}$ and the difference as $\\\\Delta\\\\widehat{elpd}$.")
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+# The end
+
+## Summary
+
+- `brms` isn't more complicated than `lme4` and comes with more flexibility.
+- Priors require some thinking.
+- Bayesian models allow straight forward interpretation of parameter values without an arbitrary threshold for significance.
 
 
 ## Recommended reading
+
+>- Bürkner tutorials: @brms2; @burkner2019ordinal; @burkner2019bayesian; @winter2021poisson
+>- Vasishth tutorials: @sorensen2016bayesian; @nicenboim2016statistical; @vasishth2016statistical
+>- Excellent book-length intros: @gelman2020regression, @mcelreath2020statistical, @kruschke2014doing, @lambert2018student, @lee2014bayesian
+- Convince yourself that Bayesian inference is the right answer: @clayton2021bernoulli
 
 
 
