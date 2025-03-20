@@ -1,5 +1,5 @@
 ---
-title: 'Linear mixed-effects models'
+title: '(Bayesian) linear mixed-effects models'
 author: '<span style="font-size: 40px; font-face: bold">Jens Roeser</span>'
 output: 
   ioslides_presentation:
@@ -7,7 +7,7 @@ output:
     transition: slower
     widescreen: true
     css: slides.css
-    logo: ../gfx/ntu.png
+#    logo: ../gfx/ntu.png
 bibliography      : ["../references.bib"]
 ---
 
@@ -26,8 +26,7 @@ library(ggthemes)
 library(mixtools)
 theme_set(theme_bw(base_size = 18) +
             theme(legend.position = "top", 
-                  legend.justification = "right",
-                  panel.grid = element_blank()))
+                  legend.justification = "right"))
 ```
 
 
@@ -35,72 +34,32 @@ theme_set(theme_bw(base_size = 18) +
 
 - Go to [github.com/jensroes/bristol-ws-2025](https://github.com/jensroes/bristol-ws-2025)
 - Click on: `Code` \> `Download ZIP` \> unzip directory on your machine.
-- Open project by double clicking on `bristol-ws-2025.Rproj`
+- Open this project by double clicking on `bristol-ws-2025.Rproj`
+
+
 
 
 ## Why generalised linear models?
 
 
-- Provide a unified set of advanced statistical techniques that covers a wider range of data-analysis problems: multilevel generalised linear models
-- General framework encapsulating a range of widely used techniques including linear regression, ANOVA, ANCOVA, MANCOVA, logistic regression, Poisson regression, log-linear, random effects / mixed-effects models etc. 
+- Unified framework of advanced statistical techniques that covers a wider range of data-analysis problems.
+  - **Linear regression**
+  - **General linear models**: certain problems can be easily accommodated (e.g. varying slope models aka ANCOVA).
+  - **Generalised linear models**: transformations applied to linear models allows modelling of data-types including loglinear models, categorical, ordinal, discrete frequency data.
+  - **Multi-level generalised linear models**: data with inherently hierarchical structure (repeated measures.
+- Backbone of statistical modelling: machine learning, time series models, path analysis, structural equation models, factor analysis, signal detection models.
 - These models arise as special cases of a single underlying general principle.
 - Apply this general principle to a wider range of data analysis problems.
 
-
-## Why generalised linear models?
-
-
-- **Linear regression**: review of multiple linear regression and factorial ANOVA. 
-- **General linear models**: certain problems, which are poorly handled by ANOVA, can be easily accommodated (e.g. varying slope models).
-- **Generalised linear models**: transformations applied to linear models allows modelling of data-types including categorical, ordinal, discrete frequency data.
-- **Multi-level generalised linear models**: data with inherently hierarchical structure, which have often been inadequately dealt with.
-
-
-## Regression models {.smaller}
-
-<div style="float: left; width: 50%;">
-- Often introduced as fitting lines to points.
-- Limited perspective that makes more complex regression models, like generalised linear models, hard to understand.
-- Extension to generalised and multilevel linear models (multiple / simple linear regressions, AN(C)OVAs, MAN(C)OVAs)
-- Backbone of statistical modelling: machine learning, time series models, path analysis, structural equation models, factor analysis, signal detection models
-
-</div>
-
-<div style="float: right; width: 45%;">
-
-```{r echo = F, out.width="100%"}
-n <- 20
-beta_0 <- 50
-beta_1 <- 6
-sigma <- 5
-sim <- tibble(id = 1:n) %>%
-    mutate(x = sample(0:5, size = n, replace = T),
-           e = rnorm(n, mean = 0, sd = sigma)) %>% 
-    mutate(y = beta_0 + beta_1 * x + e) %>%
-  select(id, x, y)
-
-ggplot(data =sim, aes(x = x, y = y)) +
-  geom_point() +
-  geom_smooth(method = "lm", se = F, colour = "red") +
-  theme(axis.title = element_blank(),
-        axis.text = element_blank(),
-        axis.ticks = element_blank())
-```
-
-</div>
-
-## Regression models
-
->- A model of how the probability distribution of one variable, known as the *outcome variable*, varies as a function of other variables, known as the *explanatory* or *predictor variables*.
->- The most basic type of regression models is the normal linear model.
->- In normal linear models, we assume that the outcome variable is normally distributed and that its mean varies linearly with changes in a set of predictor variables.
->- By understanding the normal linear model thoroughly, we can see how it can be extended to deal with data and problems beyond those that it is designed for.
 
 
 
 ## Normal linear model (formal description)
 
+
 <div style="float: left; width: 30%;">
+
+- Model of how the distribution of one variable, known as the *outcome variable*, varies as a function of other variables, known as the *explanatory* or *predictor variables*.
 
 $$
 \begin{aligned}
@@ -159,64 +118,12 @@ model <- lm(y ~ x, data = data)
 
 
 
-
-
 ## Simulation of normal distributed data
 
 <div style="float: left; width: 50%;">
 
->- `rnorm` generates unimodal, symmetrically distributed values.
->- `r` in `rnorm` = random; `norm` = normal
-
-```{r}
-# Generate data
-y <- rnorm(n = 10, mean = 550, sd = 10)
-```
-
-</div>
-
-<div style="float: right; width: 45%;">
-
-```{r echo = F, out.width="100%"}
-ggplot(data = NULL, aes(x = y)) +
-  geom_histogram() +
-  coord_cartesian(xlim = c(500, 600),
-                  ylim = c(0, 105)) 
-```
-</div>
-
-
-## Simulation of normal distributed data
-
-<div style="float: left; width: 50%;">
-
->- `rnorm` generates unimodal, symmetrically distributed values.
->- `r` in `rnorm` = random; `norm` = normal
-
-```{r}
-# Generate data
-y <- rnorm(n = 100, mean = 550, sd = 10)
-```
-
-</div>
-
-<div style="float: right; width: 45%;">
-
-```{r echo = F, out.width="100%"}
-ggplot(data = NULL, aes(x = y)) +
-  geom_histogram() +
-  coord_cartesian(xlim = c(500, 600),
-                  ylim = c(0, 105))
-```
-</div>
-
-
-## Simulation of normal distributed data
-
-<div style="float: left; width: 50%;">
-
->- `rnorm` generates unimodal, symmetrically distributed values.
->- `r` in `rnorm` = random; `norm` = normal
+- `rnorm` generates unimodal, symmetrically distributed values.
+- `r` in `rnorm` = random; `norm` = normal
 
 ```{r}
 # Generate data
@@ -239,8 +146,8 @@ ggplot(data = NULL, aes(x = y)) +
 
 <div style="float: left; width: 50%;">
 
->- `rnorm` generates unimodal, symmetrically distributed values.
->- `r` in `rnorm` = random; `norm` = normal
+- `rnorm` generates unimodal, symmetrically distributed values.
+- `r` in `rnorm` = random; `norm` = normal
 
 ```{r eval = F}
 # Decompose the mean
@@ -336,10 +243,7 @@ sigma(model) # Standard deviation
 
 ## Exercise
 
-Check scripts 
-
-- `exercises/normal_model_simulation_1.R`
-- `exercises/normal_model_simulation_2.R`
+Complete script `linear-models/exercises/normal_model_simulation.R`
 
 Observe how changing the number of observations affects the model estimates.
 
@@ -423,7 +327,6 @@ Using the linear regression equation, the mean $\mu$ can be decomposed into
 
 $$
 \mu_i = \beta_0 + \beta_1 \cdot \text{nptype}_i + \text{ppt}_i\\
-
 $$
 
 where $\text{nptype}_i$ is dummy coded (by default as treatment contrast in alphabetical order) 
@@ -439,24 +342,20 @@ $$
 $$
 
 
+$\beta_0$ is the average `rt` for conjoined NPs because 
 
-Because 
+$\beta_0 + \beta_1 \cdot 0 = \beta_0$, 
 
-$\mu_i = \beta_0 + \beta_1 \cdot 0 = \beta_0$, 
+$\beta_1$ is the difference in rts between conjoined and simple NPs. Therefore, the average `rt` for simple NPs is 
 
-$\beta_0$ is the average `rt` for conjoined NPs.
-
-Because 
-
-$\mu_i = \beta_0 + \beta_\text{nptype} \cdot 1 = \beta_0 + \beta_1$ is the average `rt` for simple NPs, and $\beta_1$ is the difference in rts between conjoined and simple NPs.
-
-
+$\beta_0 + \beta_1 \cdot 1 = \beta_0 + \beta_1$,
 
 and finally $\text{ppt}_i \sim \mathcal{N}(0, \sigma^2_\text{ppt})$
 
 
 ## Model implementation in R
 
+Repeated measures ANOVA:
 
 ```{r}
 library(afex)
@@ -464,6 +363,7 @@ m <- aov_car(rt ~ Error(ppt/nptype), data = data_ppt)
 summary(m)
 ```
 
+Linear mixed-effects model@
 
 ```{r}
 library(lme4)
@@ -478,9 +378,13 @@ anova(m)
 
 ## Exercise on repeated measures ANOVA
 
-Complete exercise script `linear-models/exercises/repeated_measures_model.R`
+Complete exercise script 
 
-and after that `linear-models/exercises/mixed_effects_model.R`
+`linear-models/exercises/repeated_measures_model.R`
+
+and after that 
+
+`linear-models/exercises/mixed_effects_model.R`
 
 
 ## Item variation (by-image sets means)
@@ -574,7 +478,6 @@ p1 <- ggplot(ri_ppt, aes(x = reorder(ppt, `(Intercept)`), y = `(Intercept)`)) +
     geom_hline(yintercept = 0, linetype = "dashed") +
     labs(x = "Participants",
          y = "Random Intercept") +
-    theme_minimal() +
     coord_flip()
 
 # Plot for Group random intercepts
@@ -583,11 +486,10 @@ p2 <- ggplot(ri_items, aes(x = reorder(items, `(Intercept)`), y = `(Intercept)`)
     geom_hline(yintercept = 0, linetype = "dashed") +
     labs(x = "Image sets",
          y = "Random Intercept") +
-    theme_minimal() +
     coord_flip()
 
 # Display the plots
-p1 + p2
+p1 + plot_spacer() + p2 + plot_layout(widths = c(.45, .1, .45))
 ```
 
 ## Random intercepts (variances)
@@ -1031,9 +933,9 @@ By default:
 
 <div style="float: left;width: 40%">
 
->- **Hamiltonian Monte Carlo:** Markov chain Monte Carlo method for obtaining random samples.
->- Probability of random samples is estimated given the data and the prior.
->- Direction changes if probability of proposed estimate is lower than previous one.
+- **Hamiltonian Monte Carlo:** Markov chain Monte Carlo method for obtaining random samples.
+- Probability of random samples is estimated given the data and the prior.
+- Direction changes if probability of proposed estimate is lower than previous one.
 
 </div>
 
@@ -1042,9 +944,9 @@ By default:
 
 <div style="float: left;width: 40%">
 
->- **Hamiltonian Monte Carlo:** Markov chain Monte Carlo method for obtaining random samples.
->- Probability of random samples is estimated given the data and the prior.
->- Direction changes if probability of proposed estimate is lower than previous one.
+- **Hamiltonian Monte Carlo:** Markov chain Monte Carlo method for obtaining random samples.
+- Probability of random samples is estimated given the data and the prior.
+- Direction changes if probability of proposed estimate is lower than previous one.
 
 </div>
 
@@ -1084,9 +986,9 @@ pivot_wider(samples, names_from = name, values_from = value) %>%
 <div style="float: left;width: 40%">
 
 
->- **Hamiltonian Monte Carlo:** Markov chain Monte Carlo method for obtaining random samples.
->- Probability of random samples is estimated given the data and the prior.
->- Direction changes if probability of proposed estimate is lower than previous one.
+- **Hamiltonian Monte Carlo:** Markov chain Monte Carlo method for obtaining random samples.
+- Probability of random samples is estimated given the data and the prior.
+- Direction changes if probability of proposed estimate is lower than previous one.
 
 
 </div>
@@ -1443,7 +1345,7 @@ You will refit our model with more informative priors in the next script.
 ## Posterior probability distribution
 
 
->- Get posterior of slope $\beta$ (difference between conditions)
+- Get posterior of slope $\beta$ (difference between conditions)
 
 ```{r echo = T}
 beta <- as_draws_df(fit_brm) %>% pull(b_nptypesimple)
@@ -1477,7 +1379,7 @@ ggplot(data = NULL, aes(x = beta)) +
 
 <div style="float: left;width: 45%">
 
->- Posterior mean
+- Posterior mean
 
 ```{r echo = T}
 mean(beta)
@@ -1500,7 +1402,7 @@ ggplot(data = NULL, aes(x = beta)) +
 
 <div style="float: left;width: 45%">
 
->- 95% probability interval (conceptually different from confidence interval)
+- 95% probability interval (conceptually different from confidence interval)
 
 ```{r echo = T}
 quantile(beta, probs = c(0.025, 0.975))
@@ -1525,13 +1427,13 @@ ggplot(data = NULL, aes(x = beta)) +
 
 <div style="float: left;width: 45%">
 
->- 95% probability interval (conceptually different from confidence interval)
+- 95% probability interval (conceptually different from confidence interval)
 
 ```{r echo = T}
 quantile(beta, probs = c(0.025, 0.975))
 ```
 
->- 89% probability interval [@mcelreath2020statistical]
+- 89% probability interval [@mcelreath2020statistical]
 
 ```{r echo = T}
 quantile(beta, probs = c(0.055, 0.945))
@@ -1784,11 +1686,11 @@ Complete script `linear-models/exercises/hypothesis_testing_rope.R`
 
 <div style="float: left;width: 70%;">
 
->- *p*-values have two possible outcomes: 
+- *p*-values have two possible outcomes: 
 >1. reject the null (i.e. $p<0.05$)
 >2. inconclusive (i.e. $p>0.05$ -- go back to start)
 
->- BFs have a continuum of three possible outcomes [@dienes2014using; @dienes2016bayes; @dienes2018four]:
+- BFs have a continuum of three possible outcomes [@dienes2014using; @dienes2016bayes; @dienes2018four]:
 >1. Reject the null / alternative hypothesis
 >2. Inconclusive (get more data!)
 >3. Accept the null / alternative hypothesis
@@ -1815,10 +1717,10 @@ $$
 
 <div style="float: right;width: 75%;">
 
->- How much more probable is one model (hypothesis) over the other?
->- How convinced should we be about the evidence for our hypothesis $H_1$ as opposed to, say, a null hypothesis $H_0$?
->- Savage-Dickey density ratio for nested models [@jeffreys1961theory; @dickey1970weighted]:
->- Height of the posterior density at zero compared to the height of the prior density at zero.
+- How much more probable is one model (hypothesis) over the other?
+- How convinced should we be about the evidence for our hypothesis $H_1$ as opposed to, say, a null hypothesis $H_0$?
+- Savage-Dickey density ratio for nested models [@jeffreys1961theory; @dickey1970weighted]:
+- Height of the posterior density at zero compared to the height of the prior density at zero.
 </div>
 
 
@@ -1828,8 +1730,8 @@ $$
 ## Bayes Factor: Savage-Dickey density ratio
 
 
->- Posterior: $\mathcal{N}(-32.2, 17.4)$
->- Prior: $\mathcal{N}(0, 100)$
+- Posterior: $\mathcal{N}(-32.2, 17.4)$
+- Prior: $\mathcal{N}(0, 100)$
 
 
 ```{r}
@@ -1876,8 +1778,8 @@ ggplot(pd, aes(x = x, y = value, colour = name)) +
 
 ## Make sure you know your priors
 
->- Posterior: $\mathcal{N}(-32.2, 17.4)$
->- Prior: $\mathcal{N}(0, 25)$
+- Posterior: $\mathcal{N}(-32.2, 17.4)$
+- Prior: $\mathcal{N}(0, 25)$
 
 
 ```{r}
@@ -1926,8 +1828,8 @@ ggplot(pd, aes(x = x, y = value, colour = name)) +
 
 ## Make sure you know your priors
 
->- Posterior: $\mathcal{N}(-32.2, 17.4)$
->- Prior: $\mathcal{N}(0, 2000)$
+- Posterior: $\mathcal{N}(-32.2, 17.4)$
+- Prior: $\mathcal{N}(0, 2000)$
 
 
 ```{r}
@@ -2251,7 +2153,10 @@ ggplot(data, aes(x = rt)) +
 
 ## Exercise
 
-Fit another probability model
+Fit two other probability models, namely a lognormal and a shifted lognormal model:
+
+- Complete script `linear-models/exercises/mixed_effects_models_brms_lognormal.R`
+- Complete script `linear-models/exercises/mixed_effects_models_brms_shifted_lognormal.R`
 
 
 
@@ -2332,14 +2237,14 @@ include_graphics(file_dest)
 
 <div style="float: left;width: 50%;">
 
->- Approximation involved in `loo()` uses the log posterior predictive densities: how likely is each data point given the distribution parameter estimates?
+- Approximation involved in `loo()` uses the log posterior predictive densities: how likely is each data point given the distribution parameter estimates?
 
 </div>
 
 
 <div style="float: right;width: 50%;">
 
-```{r fig.width=5}
+```{r fig.width=5, echo = F}
 log_lik(fit_brm) %>% 
   as_tibble() %>% mutate(sample = 1:n()) %>%
   pivot_longer(-sample, names_to = "obs", values_to = "loglik") %>%
@@ -2360,14 +2265,14 @@ log_lik(fit_brm) %>%
 
 <div style="float: left;width: 50%;">
 
->- Approximation involved in `loo()` uses the log posterior predictive densities: how likely is each data point given the distribution parameter estimates?
+- Approximation involved in `loo()` uses the log posterior predictive densities: how likely is each data point given the distribution parameter estimates?
 
 </div>
 
 
 <div style="float: right;width: 50%;">
 
-```{r fig.width=5}
+```{r fig.width=5, echo = F}
 log_lik(fit_brm) %>% 
   as_tibble() %>% mutate(sample = 1:n()) %>%
   pivot_longer(-sample, names_to = "obs", values_to = "loglik") %>%
@@ -2424,7 +2329,7 @@ loo(fit_brm)
 
 <div style="float: right;width: 50%;">
 
-```{r fig.width=5}
+```{r fig.width=5, echo = F}
 log_lik(fit_brm) %>% 
   as_tibble() %>% mutate(sample = 1:n()) %>%
   pivot_longer(-sample, names_to = "obs", values_to = "loglik") %>%
@@ -2450,12 +2355,12 @@ loo(fit_brm)
 ```
 
 
->- `elpd_loo`: sum of means (expected log predictive density)
->- `p_loo`: sum of variances
->- `looic`: $-2 \cdot ($`elpd_loo`$-$`p_loo`$)$ (for deviance scale)
+- `elpd_loo`: sum of means (expected log predictive density)
+- `p_loo`: sum of variances
+- `looic`: $-2 \cdot ($`elpd_loo`$-$`p_loo`$)$ (for deviance scale)
 
 
-```{r echo = F}
+```{r echo = F, echo = F}
 loos <- log_lik(fit_brm) %>% as_tibble() %>% mutate(sample = 1:n()) %>%
   pivot_longer(-sample, names_to = "obs", values_to = "loglik") %>%
   group_by(obs) %>%
@@ -2473,7 +2378,7 @@ loos <- log_lik(fit_brm) %>% as_tibble() %>% mutate(sample = 1:n()) %>%
 
 <div style="float: right;width: 50%;">
 
-```{r fig.width=5}
+```{r fig.width=5, echo = F}
 log_lik(fit_brm) %>% 
   as_tibble() %>% mutate(sample = 1:n()) %>%
   pivot_longer(-sample, names_to = "obs", values_to = "loglik") %>%
@@ -2493,7 +2398,7 @@ log_lik(fit_brm) %>%
 
 <div style="float: left;width: 50%;">
 
-```{r echo = T}
+```{r echo = T, echo = F}
 loo(fit_brm)
 ```
 
@@ -2511,12 +2416,12 @@ loo(fit_brm)
 # expected distance between in-sample and out-of-sample deviance
 ```
 
->- `elpd_loo` and `looic` rarely have a direct interpretation (as opposed to `loo_R2()`): important are differences between models.
->- `p_loo` is the effective number of parameters: how flexible is the model fit.
+- `elpd_loo` and `looic` rarely have a direct interpretation (as opposed to `loo_R2()`): important are differences between models.
+- `p_loo` is the effective number of parameters: how flexible is the model fit.
 
 
 
-```{r echo = F}
+```{r echo = F, echo = T}
 loos <- log_lik(fit_brm) %>% as_tibble() %>% mutate(sample = 1:n()) %>%
   pivot_longer(-sample, names_to = "obs", values_to = "loglik") %>%
   group_by(obs) %>%
@@ -2534,7 +2439,7 @@ loos <- log_lik(fit_brm) %>% as_tibble() %>% mutate(sample = 1:n()) %>%
 
 <div style="float: right;width: 50%;">
 
-```{r fig.width=5}
+```{r fig.width=5, echo = F}
 log_lik(fit_brm) %>% 
   as_tibble() %>% mutate(sample = 1:n()) %>%
   pivot_longer(-sample, names_to = "obs", values_to = "loglik") %>%
@@ -2560,41 +2465,33 @@ log_lik(fit_brm) %>%
 
 
 
-
-
-
 ## Exercise
 
 - Complete the script `linear-models/exercises/model_comparison.R`
-- Which model has the lowest elpd score (i.e. highest predictive performance)?
-- This script, again, assumes that you have stored the posterior of four models: Gaussian, lognormal, shifted lognormal, mixture of lognormals
+- This script assumes that you have stored the posterior of four models: Gaussian, lognormal, and shifted lognormal
 
 
 
 ## Model comparison
 
-```{r eval = F}
+```{r eval = T, echo = F}
 
 mc <- readRDS("../models/model_comparison.rda")
-
-mc$diff %>%
+mc$ic_diffs__ %>%
   as.data.frame() %>%
-  rownames_to_column("model") %>% 
-  select(model:se_elpd_loo) %>%
-  mutate(across(where(is.numeric), round, 1)) %>%
+  rownames_to_column("comparison") %>% 
+  mutate(across(LOOIC, ~ - . / 2),
+         across(SE, ~ . / 2),
+         elpd_ratio = abs(LOOIC / SE),
+         across(where(is.numeric), round, 1),
+         across(comparison, ~str_replace(., "-", "vs"))) %>%
+  rename_with(.fn = ~str_replace(., "LOOIC", "elpd_diff")) %>% 
   kable() %>%
   kable_styling("striped", full_width = F) %>%
-  column_spec(1:5, width = "10em") %>%
-  add_footnote("`elpd_loo` is reported as $\\\\widehat{elpd}$ and the difference as $\\\\Delta\\\\widehat{elpd}$.")
+  column_spec(1, width = "20em") %>%
+  add_footnote("`elpd_diff` is often reported as e.g. $\\\\Delta\\\\widehat{elpd}$.")
 
 ```
-
-
-
-
-
-
-
 
 
 
@@ -2604,16 +2501,16 @@ mc$diff %>%
 
 ## Summary
 
-- `brms` isn't more complicated than `lme4` and comes with more flexibility.
+- `brms` isn't much more complicated than `lme4` and comes with more flexibility.
 - Priors require some thinking.
 - Bayesian models allow straight forward interpretation of parameter values without an arbitrary threshold for significance.
 
 
 ## Recommended reading
 
->- Bürkner tutorials: @brms2; @burkner2019ordinal; @burkner2019bayesian; @winter2021poisson
->- Vasishth tutorials: @sorensen2016bayesian; @nicenboim2016statistical; @vasishth2016statistical
->- Excellent book-length intros: @gelman2020regression, @mcelreath2020statistical, @kruschke2014doing, @lambert2018student, @lee2014bayesian
+- Bürkner tutorials: @brms2; @burkner2019ordinal; @burkner2019bayesian; @winter2021poisson
+- Vasishth tutorials: @sorensen2016bayesian; @nicenboim2016statistical; @vasishth2016statistical
+- Excellent book-length intros: @gelman2020regression, @mcelreath2020statistical, @kruschke2014doing, @lambert2018student, @lee2014bayesian
 - Convince yourself that Bayesian inference is the right answer: @clayton2021bernoulli
 
 
@@ -2636,10 +2533,10 @@ slides > slide:not(.nobackground):after {
 
 <div style="float: left;width: 35%;">
 
->- Symmetric continuous distribution with fat tails assigning more probability to extreme values.
->- $\nu$ parameter controls the degrees of freedom 
->- $\nu = 1$ is a Cauchy distribution 
->- When $\nu \rightarrow \infty$ the *t*-distribution becomes Gaussian.
+- Symmetric continuous distribution with fat tails assigning more probability to extreme values.
+- $\nu$ parameter controls the degrees of freedom 
+- $\nu = 1$ is a Cauchy distribution 
+- When $\nu \rightarrow \infty$ the *t*-distribution becomes Gaussian.
 
 </div>
 

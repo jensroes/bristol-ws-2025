@@ -1,0 +1,116 @@
+---
+title: "My robobook"
+author: "Jens Roeser"
+date: "`r Sys.Date()`"
+output:
+  rmdformats::robobook:
+    highlight: kate
+    use_bookdown: true
+bibliography: references.bib 
+
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+library(rmdformats)
+library(tidyverse)
+
+## Global options
+options(max.print="75")
+opts_chunk$set(echo=TRUE,
+	             cache=TRUE,
+               prompt=FALSE,
+               tidy=TRUE,
+               comment=NA,
+               message=FALSE,
+               warning=FALSE)
+opts_knit$set(width=75)
+```
+
+
+# Load data
+
+This line is loading the data published in @blomkvist2017reference.
+
+```{r}
+blomkvist <- read_csv("../../data/blomkvist.csv")
+```
+
+Lets have a look at our data.
+
+```{r}
+glimpse(blomkvist)
+```
+
+Figure \@ref(fig:sc2) shows an example of the task.
+
+```{r sc2, fig.cap="Example of task", echo = FALSE, fig.align='center'}
+include_graphics("../../gfx/sc2.jpeg")
+```
+# Participants
+
+The sample comprises `r nrow(blomkvist)` participants with a median age of `r median(blomkvist$age)` years, a minimum of `r min(blomkvist$age)` and a maximum of `r max(blomkvist$age)` years.
+
+
+# Transform data
+
+Create a long format of the data.
+
+```{r}
+blomkvist_long <- blomkvist %>% 
+  select(id, starts_with("rt")) %>% 
+  pivot_longer(-id, 
+               names_to = c(".value", "response_by", "dominant"), 
+               names_sep = "_")
+```
+Show long format.
+
+```{r}
+blomkvist_long
+```
+
+# Visualise data
+
+Data are shown in Figure \@ref(fig:dataplot).
+
+```{r dataplot, fig.cap="Beewarm plot", fig.align='center'}
+library(ggbeeswarm)
+ggplot(blomkvist_long, aes(y = rt, x = dominant, colour = response_by)) +
+  scale_y_log10() +
+  geom_beeswarm(dodge.width = .5, cex = .5)
+```
+
+# Model
+
+```{r}
+model <- lm(log(rt) ~ response_by * dominant, data = blomkvist_long)
+```
+
+```{r include=FALSE}
+library(broom)
+tidy(model, conf.int = TRUE)
+```
+
+```{r echo = FALSE}
+kable(tidy(model, conf.int = TRUE), 
+      digits = 2, 
+      col.names = c("Fixed effect", "Estimate", "SE", "*t*", "*p*", "2.5%", "97.5")) %>% 
+  kableExtra::add_header_above(c(" " = 5, "CI" = 2))
+```
+
+Likelihood-ratio test:
+
+```{r eval = FALSE}
+anova(model)
+```
+
+
+See Table \@ref(tab:lrt) for Likelihood-ratio test.
+
+```{r lrt, echo = FALSE}
+kable(anova(model), digits = c(0,2,2,2,3), caption = "Likelihood-ratio test", booktabs = TRUE)
+```
+
+
+# References
+

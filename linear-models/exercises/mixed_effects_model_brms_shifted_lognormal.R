@@ -2,34 +2,39 @@
 library(tidyverse)
 library(brms) # for Bayesian inference
 
+# In this script we will fit a lognormal model with shift to account for
+# the non-decision time in responses
+
 # Load data
 data <- read_csv("data/martin-etal-2010-exp3a.csv")
 
-# We will use the same random intercepts and random slopes model as before.
+# We will use the same random intercepts and random slopes model as before but
+# the family needs to be changed to shifted_lognormal():
+formula <- bf(rt ~ nptype + ( nptype | ppt ) + ( nptype | item ), family = ---)
 
-formula <- bf(rt ~ nptype + ( nptype | ppt ) + ( nptype | item ), family = shifted_lognormal())
+# Using this formula object we can view the priors that brms is going to use
+# by default. These are largely similar to the lognormal model but we have a new
+# parameter of class ndt (non-decision time) with a uniform distribution that ranges from
+# 0 to the minimum value of the outcome variable.
+get_prior(---, ---)
 
-# However, using this formula object we can view the priors that brms is going to use
-# by default:
-get_prior(formula, data)
+# A uniform prior (all values are equally likely) is probably never a good choice,
+# but we'll leave it for now.
 
-# Important the priors are no longer on the msecs scale but are log-msecs
-
-
-prior <- set_prior("normal(0, .1)", class = "b", coef = "nptypesimple") + # <- complete this
-         set_prior("normal(6.9, 0.14)", class = "Intercept") +
-         set_prior("lkj(2)", class = "cor")
+# Other than that, lets use the same priors as for the lognormal model.
+prior <- set_prior("normal(---, ---)", class = "b", coef = "---") + # <- complete this
+         set_prior("normal(6.9, 0.14)", class = "---") +
+         set_prior("lkj(2)", class = "---")
 
 
-# Fitting the model:
-
-fit <- brm(formula = formula,
+# Fitting the shifted lognormal model:
+fit <- brm(formula = ---,
            data = data,
-           prior = prior,
+           prior = ---,
            sample_prior = "yes",
-           cores = 4)
+           cores = ---)
 
 
 # Save new brms object as RDS file
-saveRDS(fit, "models/fit_brm_shifted_lognormal.rds", compress = "xz")
+saveRDS(---, "models/fit_brm_shifted_lognormal.rds", compress = "xz")
 

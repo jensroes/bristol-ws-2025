@@ -1,0 +1,314 @@
+---
+title             : "The effect of smoking on reaction times over lifespan"
+shorttitle        : "The effect of smoking"
+csl               : "`r system.file('rmd', 'apa7.csl', package = 'papaja')`"
+documentclass     : "apa7"
+author: 
+  - name          : "Jens Roeser"
+    affiliation   : "1"
+    address       : "50 Shakespeare St, Nottingham NG1 4FQ"
+    corresponding : yes 
+    email         : "jens.roeser@ntu.ac.uk"
+    role:         # Contributorship roles (e.g., CRediT, https://casrai.org/credit/)
+      - Conceptualization
+      - Writing - Original Draft Preparation
+      - Writing - Review & Editing
+
+  - name          : "Guy Incognito"
+    affiliation   : "2"
+    role:
+      - Writing - Review & Editing
+
+affiliation:
+  - id            : "1"
+    institution   : "Department of Psychology, Nottingham Trent University, United Kingdom"
+  - id            : "2"
+    institution   : "Faculty of Life, University of Springfield, Knowwhere"
+
+authornote: |
+  Add complete departmental affiliations for each author here. Each new line herein must be indented, like this line.
+
+  Enter author note here.
+
+abstract: |
+  This is the abstract
+
+
+keywords: "first keyword; second keyword"
+wordcount         : "X"
+
+bibliography      : ["references.bib"]
+
+floatsintext      : yes
+figurelist        : no
+tablelist         : no
+footnotelist      : no
+linenumbers       : no
+mask              : no
+draft             : no
+
+classoption       : "man" # or doc
+output            : 
+  papaja::apa6_pdf:
+    keep_tex: FALSE
+---
+
+```{r setup, include=FALSE}
+# Load packages
+library(tidyverse)
+library(papaja)
+library(ggthemes)
+library(broom)
+library(effects)
+
+# Define defaults for chunks
+knitr::opts_chunk$set(
+  warning = FALSE, # show warning
+  message = FALSE, # show message
+  eval = TRUE,     # evaluate code
+  echo = FALSE,    # show code
+  include = TRUE)  # include the output of the code 
+
+# Define the appearance of plots
+theme_set(theme_bw(base_size = 10) + 
+          theme(axis.ticks = element_blank(),
+                legend.position = "top",
+                legend.justification = "right",
+                panel.grid = element_blank()))
+```
+
+```{r}
+blomkvist <- read_csv("../../data/blomkvist.csv") %>% 
+  select(id, sex, age, smoker, starts_with("rt_")) %>% 
+  pivot_longer(cols = -c(id, sex, age, smoker),
+               names_to = c(".value", "response_by", "dominant"),
+               names_pattern = "(.+)_(.+)_(.+)") %>% 
+  mutate(across(dominant, recode, d = "dominant", nd = "non-dominant"),
+         across(response_by, str_to_sentence),
+         across(smoker, factor, levels = c("no", "former", "yes"))) %>% 
+  drop_na()  
+```
+
+Reaction times are shown to change across lifespan [@blomkvist2017reference]. @blomkvist2017reference provided reaction time data for various ages. From these data we can test to what extent age-related changes are affected by smoking.
+
+# Method
+
+## Participants
+
+```{r}
+# Get age summary for in-text stats example
+age_data <- select(blomkvist, id, age) %>% unique()
+```
+
+We analysed the data from `r nrow(age_data)` participants. The median age of the sample is `r median(age_data$age)` years with a *SD* of `r sd(age_data$age)` with a minimum of `r min(age_data$age)` and a maximum of `r max(age_data$age)` years of age.
+
+
+```{r}
+# Remove participants with extremely long average rts
+rt_threshold <- 5000
+removed <- blomkvist %>% 
+  count(below_threshold = rt < rt_threshold) %>% 
+  mutate(total = sum(n),
+         perc = n / total * 100) %>% 
+  filter(!below_threshold) %>% 
+  select(n, perc)
+
+blomkvist <- filter(blomkvist, rt < rt_threshold)
+```
+
+
+## Design and Materials
+
+This is a reanalysis of data published in @blomkvist2017reference.
+
+# Results
+
+Average response times larger than `r rt_threshold` msecs were removed from the analysis ($N=$ `r removed$n`, `r removed$perc`%). Reaction time changes over age are shown in Figure \ref{fig:rawdata}.
+
+
+```{r rawdata, fig.pos='ht', fig.height = 4, fig.width = 6, fig.align = 'center', fig.cap = 'Raw reaction times with locally fitted functions.'}
+ggplot(blomkvist, aes(y = rt, 
+                      x = age, 
+                      colour = smoker, 
+                      fill = smoker,
+                      linetype = smoker)) +
+  geom_point(size = 1.5, alpha = .25) +
+  stat_smooth(method = "lm", 
+              formula = y ~ poly(x, 2), 
+              fullrange = TRUE, 
+              size = .5,
+              alpha = .25) +
+  facet_grid(dominant ~ response_by) +
+  scale_y_log10() +
+  scale_color_colorblind() +
+  scale_fill_colorblind() +
+  labs(colour = "Smoker", 
+       fill = "Smoker", 
+       linetype = "Smoker",
+       y = "RT in msecs", 
+       x = "Age")
+```
+
+
+
+```{r}
+# Select only data for hand
+blomkvist <- filter(blomkvist, response_by == "Hand") %>%
+  select(-response_by)
+```
+
+
+## Theoretical model
+
+Equation \ref{eq:lm} is a regression model with age, smoker (levels: yes, no, former) and their interaction as predictors (ANCOVA) formally expressed as
+
+```{=tex}
+\begin{equation}
+    (\#eq:lm)
+    \begin{aligned}
+      \mu_i = \beta_0 + \beta_1 \cdot age_i + \beta_2 \cdot age_i^2 + \beta_3 \cdot smoker_i + \\
+      \beta_4 \cdot age_i \cdot smoker_i + \beta_5 \cdot age_i^2 \cdot smoker_i
+    \end{aligned}
+\end{equation}
+```
+
+
+\noindent with data $y$ coming from a normal distribution $y_i \sim \mathcal{N}(\mu_i, \sigma^2)$ with a mean $\mu$ and a standard deviation $\sigma^2$ for $i \in 1 \dots N$ where $N$ is the total number of observations.
+
+
+```{r}
+# Contrast coding for categorical variable
+contrasts(blomkvist$smoker) <- contr.helmert(3)
+#contrasts(blomkvist$smoker) <- contr.sum(3)
+colnames(contrasts(blomkvist$smoker)) <- c(", quit smoking", ", smoking")
+```
+
+## Model results
+
+Fixed effects were added incrementally and evaluated using a Likelihood-ratio test. Here is a table in Table \ref{tab:lrt} showing the results of the likelihood-ratio test.
+
+```{r}
+# Regression models
+model_0 <- lm(log(rt) ~ 1 + (1|id), data = blomkvist)
+model_age <- lm(log(rt) ~ poly(age,1), data = blomkvist)
+model_age2 <- lm(log(rt) ~ poly(age,2), data = blomkvist)
+model_smoker <- lm(log(rt) ~ poly(age,2) + smoker, data = blomkvist)
+model_interaction <- lm(log(rt) ~ poly(age,2) * smoker, data = blomkvist)
+```
+
+```{r eval = F}
+anova_table <- apa_print(anova(model_interaction))$table
+apa_table(anova_table, caption = 'Likelihood-ratio test')
+```
+
+```{r}
+# Likelihood-ratio test
+lrt <- anova(model_0, model_age, model_age2, model_smoker, model_interaction)
+tidy_lrt <- tidy(lrt) 
+```
+
+```{r}
+lrt_fin_model <- tidy_lrt %>% 
+  filter(p.value < .05) %>%
+  slice_tail(n = 1) %>% 
+  mutate(across(statistic, round, 2)) %>% 
+  transmute(term = paste0("*F*(", df, ", ", df.residual, ") = ", statistic, ", *p*", format.pval(p.value, eps = 0.05)))
+```
+
+The Likelihood-ratio test revealed that including age as quadratic predictor rendered a better fitting model compared to age as linear predictor; `r lrt_fin_model`.
+
+```{r}
+# make summary look pretty
+tidy_lrt_pretty <- tidy_lrt %>% 
+  mutate(Model = c("M$_0$", "M$_{age}$", "M$_{age^2}$", "M$_{smoker}$", "M$_{interaction}$"),
+         across(where(is.numeric), round, 2),
+         across(p.value, ~format.pval(., eps = 0.05)),
+         across(everything(), ~as.character(.)),
+         across(everything(), ~str_replace(., "NA", "")),
+         across(everything(), ~replace_na(., ""))) %>% 
+  select(Model, 
+         SumSq = sumsq, 
+         RSS = rss,
+         `$df$` = df, 
+         `$df_{res}$` = df.residual, 
+         `\\textit{F}-statistic` = statistic, 
+         `\\textit{p}-value` = p.value)
+```
+
+
+
+```{r lrt, results='asis'}
+apa_table(tidy_lrt_pretty,
+          escape = FALSE, 
+          caption = 'Likelihood-ratio test',
+          note = 'This is a note')
+```
+
+Model coefficients of the best fitting model can be found in Table \ref{tab:modelcoefs}.
+
+```{r modelcoefs}
+# Summary of model coefficients
+lmer_table <- apa_print(model_interaction)$table
+apa_table(lmer_table, caption = "Model coefficients")
+```
+
+The overall model is significant; `r apa_print(model_interaction)$full_result$modelfit$r2`.^[Note, that this is just an example. This result is not surprising because the baseline is an intercept only model.] Slowdown in reaction times across age has a quadratic function; `r apa_print(model_interaction)$full_result$polyage__22`. The slowdown across age was more prominent for smokers compared to former smokers and non-smokers; 
+`r apa_print(model_interaction)$full_result$polyage__22_smoker__smoking`.
+
+```{r}
+# Get marginal effects
+effects <- effect("poly(age, 2):smoker", model_interaction) %>% 
+  as_tibble() %>% 
+  mutate(across(c(fit, lower, upper), exp)) 
+
+```
+
+Figure \ref{fig:smoker} shows marginal estimated development curves for the effect of smoking on reaction times in higher age. Towards the older ages, smokers shows longer reaction times but also a larger variability in reaction times compared to former smokers and non-smokers.
+
+```{r smoker, fig.pos='ht', fig.height = 4, fig.width = 6, fig.align = 'center', fig.cap = 'Marginal effects with distirbution of raw data in the margins.'}
+
+ggplot(effects, aes(y = fit, 
+                    x = age, 
+                    colour = smoker, 
+                    fill = smoker, 
+                    linetype = smoker)) +
+  geom_rug(data = blomkvist, 
+           aes(y = rt), 
+           alpha = .25) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), 
+              linetype = 0,
+              alpha = .25) +
+  geom_line() +
+  scale_y_log10() +
+  scale_color_colorblind() +
+  scale_fill_colorblind() +
+  labs(colour = "Smoker", 
+       fill = "Smoker", 
+       linetype = "Smoker",
+       y = "RT in msecs", 
+       x = "Age")
+
+```
+
+# Discussion
+
+Looks like smoking makes you slower in advanced ages.
+
+
+\newpage
+
+
+# References
+
+\begingroup
+
+<div id = "refs"></div>
+
+\endgroup
+
+\newpage
+
+
+
+# (APPENDIX) Appendix {.unnumbered}
+

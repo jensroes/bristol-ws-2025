@@ -1,0 +1,618 @@
+---
+title: 'Reproducible data analysis using RMarkdown'
+author: '<span style="font-size: 40px; font-face: bold">Jens Roeser</span>'
+output: 
+  ioslides_presentation:
+    incremental: false
+    transition: slower
+    widescreen: true
+    css: slides.css
+    logo: ../gfx/ntu.png
+bibliography      : ["../references.bib"]
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, eval = TRUE, message = FALSE, comment=NA)
+options("kableExtra.html.bsTable" = T, digits = 2)
+#options(pillar.print_min = 5, pillar.print_max = 6)
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+```
+
+
+
+## About me: Jens Roeser 
+
+<div style="float: left; width: 60%;">
+
+>- Senior Lecturer in Psycholinguistics @ Psychology Department
+>- Language production / comprehension / acquisition often with a focus on writing [e.g. @roeser2019advance; @garcia2023finding]
+>- Bayesian modelling [@roeser2021modelling; @roeser2024typing]; keystroke logging; eyetracking
+>- Teaching: advanced statistical modelling, data wrangling, data visualisation, R package [`psyntur`, @psyntur]
+
+</div>
+
+<div style="float: right; width: 39%;">
+
+```{r fig.align='right', out.width="110%", echo = F, eval = T}
+knitr::include_graphics("../gfx/me2.jpg")
+```
+</div>
+
+
+# Reproducible data analysis using RMarkdown
+
+## How can you trust someone's results?
+
+- Results are communicated through reports such as peer reviewed scientific articles.
+- Reported results should be reproducible! -- Are they though?
+- Data and code should be made available to others -- Is this enough?
+- It is difficult to relate code to figures, tables, numbers etc. especially where numbers were copy-pasted from software into the text.
+- Also manual processing of data and generation of reports is error prone.
+
+<!-- ## Rules for reproducible data analysis! -->
+
+<!-- - Never change your data manually; document everything in code. -->
+<!--   - Documentation / reproducibility -->
+<!--   - Retrospective amendments made easy -->
+<!-- - Organized working environment -->
+<!--   - `.Rproj` with one directory per project with sub-directories for scripts, data, plots, etc. -->
+<!--   - Short scripts: minimal code with one clear purpose. -->
+<!-- - Comment your code (`# Ceci n'est pas un comment!`) -->
+<!-- - Share code and data with your readers: [github.com](https://github.com/jensroes) or [osf.io](https://osf.io/sp87n/) -->
+<!-- - Use RMarkdown for full reproducibility of your results. -->
+
+
+## Why do we need reproducible analyses? 
+
+<div style="float: left; width: 55%;">
+
+- Open Science Collaboration led by Brian Nosek [@open2015estimating].
+- Aimed to replicate important findings in psychological research.
+- Main finding: 36% where replicated; only 23% for Social Psychology
+- Reasons: small samples, pressure to publish sensational results.
+- Make Psychology Science Again: pre-registration, replications, large samples (power analysis), abandoning significance testing, transparency.
+
+</div>
+
+<div style="float: right; width: 40%;">
+```{r fig.align='right', out.width="100%", echo = F, eval = T}
+include_graphics("../gfx/rc.jpg")
+```
+
+</div>
+
+## A truely reproducible report
+
+<div style="float: left; width: 55%;">
+
+- Data, code, report need be one unit.
+- Based on the concept of *literate programming* [@knuth1984literate]: text and code are linked in one ingle file to generate manual or computer program.
+- This principle can be used to creating reproducible reports, sometimes known as *dynamic documents* [@xie2017dynamic].
+- RMarkdown is the best way of doing this using R.
+
+</div>
+
+
+<div style="float: right; width: 40%;">
+
+```{r fig.align='right', out.width="90%", echo = F, eval = T}
+include_graphics("../gfx/markdown.png")
+```
+
+</div>
+
+
+
+
+## Why RMarkdown? 
+
+<div style="float: left; width: 30%;">
+
+```{r fig.align='right', out.width="100%", echo = F, eval = T}
+include_graphics("../gfx/rmarkdown.png")
+```
+
+</div>
+
+<div style="float: right; width: 60%;">
+
+- Documentation of all analysis steps
+- Quickly updating and reproducing analysis
+- No copy-pasting between programmes
+- Producing texts, website, supplementary materials, APA-style manuscripts, slides
+- Easy cross-referencing 
+- Automatic reference lists
+- Easy type-setting of equations
+
+</div>
+
+## Key concepts and tools {.smaller}
+
+<div style="float: left; width: 40%;">
+
+```{r fig.align='right', out.width="90%", echo = F, eval = T}
+include_graphics("../gfx/markdown.png")
+```
+
+</div>
+
+
+
+<div style="float: right; width: 50%;">
+
+
+> What is RMarkdown?
+
+- Text file format, a script like an R script.
+- Open, edit, run in RStudio like scripts.
+- RMarkdown are a mixture of *markdown* code and normal R code (and your data).
+- R code in RMarkdown documents occurs in R *chunks*, i.e. blocks of code, or *inline* R code inside of markdown code
+- Markdown: minimal syntax that instructs how text should be formatted.
+- Rendering into `.pdf`, `.html`, `.docx`, `.doc`
+
+</div>
+
+
+
+
+<!-- ## Key concepts and tools -->
+
+<!-- <div style="float: left; width: 40%;"> -->
+
+<!-- ```{r fig.align='left', out.width="90%", echo = F, eval = T} -->
+<!-- include_graphics("../gfx/latex.png") -->
+<!-- ``` -->
+
+<!-- </div> -->
+
+<!-- <div style="float: right; width: 60%;"> -->
+
+<!-- - Document preparation system for creating high quality technical and scientific documents. -->
+<!-- - Widely used in statistics, computer science, physics -->
+<!-- - $\LaTeX$ documents are written in a `.tex` source code file and rendered to pdf -->
+
+<!-- </div> -->
+
+
+## Download repository
+
+- Go to [github.com/jensroes/bristol-ws-2025](https://github.com/jensroes/bristol-ws-2025)
+- Click on: `Code` \> `Download ZIP` \> unzip directory on your machine.
+- Open project by double clicking on `bristol-ws-2025.Rproj`
+
+
+
+## Installation 
+
+<div style="float: left; width: 35%;">
+
+- RStudio comes with necessary R package `rmarkdown`
+- To create pdf outputs, we require the package `tinytex`
+
+</div>
+
+<div style="float: right; width: 53%;">
+
+```{r eval = F}
+# Is tidyverse installed?
+'tidyverse' %in% rownames(installed.packages())
+# Should return TRUE but if not run
+install.packages('tidyverse')
+```
+
+```{r eval = F}
+install.packages('tinytex')
+tinytex::install_tinytex()
+# then restart RStudio
+```
+
+```{r eval = F}
+# Then, try
+tinytex:::is_tinytex() # should return TRUE
+```
+
+</div>
+
+## Installation
+
+- Test that `rmarkdown` will render pdf documents:
+
+```{r eval = F}
+writeLines('Hello $x^2$', 'test.Rmd')
+rmarkdown::render('test.Rmd', output_format = 'pdf_document')
+```
+
+- `writeLines` creates an `.Rmd` file named `test.Rmd`.
+- `rmarkdown::render` renders `.Rmd` as pdf named `test.pdf`.
+
+
+
+## Minimal RMarkdown example 
+
+- Open `rmarkdown/examples/example.Rmd`
+- You'll see an R *chunk* and two pieces of inline R code.
+- Remainder is plain Markdown.
+- `Knit > Knit to PDF` to compile `.Rmd` to `.pdf`. Wow!!!
+- Notice how the code was interpreted in pdf.
+- Important: R code is executed from top down.
+- Other demos and examples are provided.
+
+## Elaborate APA7 RMarkdown example
+
+- Open `rmarkdown/examples/apa7_template.Rmd`
+- To run this, you might need to install a few packages so instead
+- Check out the file `rmarkdown/examples/apa7_template.pdf` that was rendered with this .Rmd file
+
+
+## Example for online supp materials
+
+- Open `rmarkdown/examples/robobook.Rmd`
+- To run this, you might need to install a few packages so instead
+- Check out the file `rmarkdown/examples/robobook.html` that was rendered with this .Rmd file
+
+
+## From the RStudio menu ...
+
+- Click on `File` > `New File` > `R Markdown`
+- Document (PDF, WORD, HTML)
+- `output: pdf_document`: use pdfs for writing manuscripts   
+- Name your RMarkdown: `my-practice-markdown.Rmd`
+- Save in same directory as `.Rproj` file.
+
+
+
+## Load data
+
+- Create a new *R chunk*: try `CTRL+ALT+I` or `CMD+ALT+I` (i.e. the letter "i")
+- Create a chunk called `packages` and load libraries needed: 
+
+```{r eval = F}
+library(tidyverse)
+```
+
+- Create a new chunk called `loaddata` and load @martin2010planning data:
+
+```{r eval = F}
+data <- read_csv("data/martin-etal-2010-exp3a.csv") 
+```
+
+```{r echo = F}
+data <- read_csv("../data/martin-etal-2010-exp3a.csv") 
+```
+
+
+
+
+## The setup chunk: global options 
+
+- Note ````{r setup, echo=FALSE}`
+- `setup` is a label of this chunk (optional; useful for cross-referencing of figures and tables).
+- Chunk configuration option `echo = FALSE`: don't display chunk in output; `echo = TRUE`: display chunk.
+
+
+```{r eval = F}
+knitr::opts_chunk$set(message = FALSE, # don't return messages
+                      warning = FALSE, # don't return warnings
+                      comment = NA, # don't comment output
+                      echo = TRUE, # display chunk (is default)
+                      eval = TRUE, # evaluate chunk (is default)
+                      out.width = '45%',  # figure width
+                      fig.align='center') # figure alignment
+```
+
+
+
+## Section headers
+
+```
+# This is a section header
+
+## This is a subsection header
+
+# This is another section header
+
+## This is another subsection header
+
+### This is a subsubsection header
+```
+
+
+## Figures
+
+- Create a new *R chunk* with label `mydensplot` 
+- Set `echo = F` cause we only need the figure.
+- Add a figure caption `fig.cap = "A density plot."` in the chunk configurations.
+
+```{r eval = F}
+ggplot(data, aes(x = rt, colour = nptype, fill = nptype)) +
+    geom_density(alpha = .25) +
+    scale_x_log10() +
+    theme_classic()
+```
+
+## Figures
+
+- Change the default size to `out.width = 50%`.
+- Cross-reference figure using `\ref{fig:mydensplot}` in the text. 
+
+```
+"A density plot of reaction time visualised by NP type can be found in Figure \ref{fig:mydensplot}."
+```
+
+
+## Add header options
+
+<!-- ``` -->
+<!-- output: -->
+<!--   pdf_document: -->
+<!--     keep_tex: TRUE -->
+<!-- header-includes: -->
+<!-- - \usepackage{booktabs} -->
+<!-- ``` -->
+
+
+```
+header-includes:
+- \usepackage{booktabs}
+```
+
+- We just need `booktabs` to improve type setting.
+
+
+## Formatted tables
+
+- Reporting results in tables formatted to a high standard.
+- Calculate descriptive summary stats:
+
+```{r}
+(rt_stats <- summarise(data, across(rt, list(mean = mean, 
+                                               sd = sd), 
+                              .names = "{fn}"),
+                         .by = nptype))
+```
+
+- This format isn't good enough for papers.
+
+## Formatted APA style tables
+
+```{r eval = F}
+library(kableExtra)
+rt_stats %>% 
+  kable(format = 'latex',
+        booktabs = TRUE,
+        digits = 2,
+        align = 'c', # centre value in each column
+        caption = 'Descriptive summary statistics of reaction time by NP type.') %>% 
+  kable_styling(position = 'center') # centre position of table
+```
+
+- Also, label your chunk "`rtstats`" and cross-reference the table in the text using `Table \ref{tab:rtstats}`.
+
+
+
+
+## Bibliography and citations
+
+- Add to the YAML preamble:
+
+```{r eval = F}
+bibliography: refs.bib
+biblio-style: apalike
+```
+
+- Create a file (in RStudio) called `refs.bib` (save in same working directory as your `.Rmd` file)
+
+## Bibliography and citations
+
+- Get the `.bib` entry for @martin2010planning from Google Scholar and paste it into `refs.bib`:
+  - Copy the title "Planning in sentence production: Evidence for the phrase as a default planning scope" into Google Scholar
+  - Click `cite` and `BibTeX` 
+  - Copy the `.bib` entry into `refs.bib`
+- Note the citation *key* `martin2010planning`
+- Cite @martin2010planning using `@martin2010planning` or `[@martin2010planning]`.
+- At the end of your document create a section "`# References`"
+
+
+
+## Table exercise
+
+```{r}
+# Fit model and get the summary
+library(lmerTest)
+model <- lmer(rt ~ nptype + (nptype|ppt) + (nptype|item), data = data)
+model_summary <- summary(model)$coefficients
+```
+
+Task: Use the `tab_model` function of the `sjPlot` package to create a nicely formatted table of the `model` object. Use cross-referencing as before to refer to the table from the text.
+
+
+```{r eval = F, echo = F}
+sjPlot::tab_model(model, title = "")
+```
+
+
+
+
+## Formatted inline R output 
+
+```{r}
+# Extract t statistic
+t_val <- model_summary[2, 4]
+# Extract df
+df <- model_summary[2, 3]
+# Extract p value
+p_val <- model_summary[2, 5]
+```
+
+
+```{r eval = FALSE}
+The hypothesis test for the rt effect can be summarised like so: 
+*t*(`r round(df, 1)`) = `r round(t_val, 1)`, *p* `r format.pval(p_val, eps = 0.05)`.
+
+```
+
+> Which renders to: "The hypothesis test for the slope coefficient can be summarised like so: *t*(`r round(df, 1)`) = `r round(t_val, 1)`, *p* `r format.pval(p_val, eps = 0.05)`."
+
+```{r eval = F, echo = F}
+p <- c(0.05, 0.011, 0.005)
+format.pval(p, eps = 0.01)
+```
+
+## Formatted inline R output 
+
+```{r}
+# Extract slope coefficient
+est <- model_summary[2, 1]
+```
+
+```{r eval = F}
+The $\hat\beta$ coefficient of this model shows a slowdown of `r round(est, 1)` ms.
+```
+
+> Renders "The $\hat\beta$ coefficient of this model shows a slowdown of `r round(est, 1)` ms."
+
+Task: Use `confint(model)` to obtain the 95% CI of the effect and add it to the text. Don't copy paste the numbers but use inline R code.
+
+
+
+## Formatted inline R output 
+
+
+```{r}
+# Extract slope coefficient
+est <- model_summary[2, 1]
+ci <- as.numeric(confint(model, parm = "nptypesimple"))
+```
+
+```{r eval = F}
+The $\hat\beta$ coefficient of this model shows a slowdown of `r round(est, 1)` ms;
+95% CI: `r ci[1]`, `r ci[2]`.
+```
+
+> Renders "The $\hat\beta$ coefficient of this model shows a slowdown of `r round(est, 1)` ms; 95% CI: `r ci[1]`, `r ci[2]`."
+
+
+
+## Mathematical typesetting 
+
+- Strings are parsed using $\LaTeX$ and typeset accordingly when used between `'$'` symbols for inline mode.
+- For example `$\beta$` renders $\beta$.
+- Subscripts: `$\beta_0$` is $\beta_0$ and using `'{}'` for more than one symbol as in `$\beta_{01}$` which is $\beta_{01}$
+- How would you write $\beta_{0_1}$?
+- Superscripts: `'^'` as in `$\sigma^2$` which is $\sigma^2$.
+- How would you write $\sigma^{2^2}$?
+- How about $\sigma_e^2$?
+
+
+## Some arithmetic operations and fractions {.smaller}
+
+<div style="float: left; width: 60%;">
+
+- `$x + y$`, `$x - y$`
+- Multiplication use either `$\cdot$` or `$\times$` to get $\cdot$ or $\times$, respectively, as in $3 \cdot 2$
+- Division: `$/$` or `$\div$` to get $/$ or $\div$, respectively, or `$\frac{1}{2}$` for $\frac{1}{2}$
+- `$\pm$` renders to $\pm$
+
+</div>
+
+
+## $\LaTeX$ mathematical typesetting
+
+> `The observed variable is modeled as coming from a normal distribution $y_i \sim \mathcal{N}(\mu_i, \sigma^2)$, with $\mu_i = \beta_0 + \beta_1 \cdot x_i$ where each $i \in 1 \dots N$ .`
+
+Renders
+
+The observed variable is modeled as coming from a normal distribution $y_i \sim \mathcal{N}(\mu_i, \sigma^2)$, with $\mu_i = \beta_0 + \beta_1 \cdot x_i$ where each $i \in 1 \dots N$.
+
+
+## *Display* mode using `'$$'` as delimiters
+
+
+```
+$$
+y_i \sim \mathcal{N}(\mu_i, \sigma^2)
+$$
+```
+
+
+Renders
+
+
+$$
+y_i \sim \mathcal{N}(\mu_i, \sigma^2)
+$$
+
+
+
+
+
+
+## Display maths
+
+- Using $\LaTeX$'s `aligned` environment to align multiple mathematical statements.
+- We will get back to what this means.
+
+```
+$$
+\begin{aligned}
+  y_i &\sim N(\mu_i, \sigma^2),\\
+  \mu_i &= \beta_0 + \beta_1 \cdot x_i + beta_2 \cdot z_i
+\end
+$$
+```
+
+- The `'&'` is used to align the lines so that '$\sim$' (`\sim`) and '$=$' are aligned.
+- `'$\\$'` forces a line break.
+
+
+
+
+## For other formats ...
+
+```{r eval = FALSE}
+install.packages("rmdformats")
+```
+
+- Create from template:
+  - `File` > `New File` > `R Markdown` (e.g. `readthedown` or `robobook` for documents)
+  - `rmdshower::shower_presentations` and `ioslides_presentation` for slides
+- [Rmarkdown example](https://rpubs.com/jensroes/765467)
+- Online sharing on RPubs ("Publish")
+
+
+## APA7 manuscripts using `papaja`
+
+- Example: <https://osf.io/vayhq/> published in @roeser2021modelling
+- Installation: <https://github.com/crsh/papaja>
+
+
+## Tips / Rules
+
+- Never copy numbers from output into text.
+- Don't produce citations or cross-reference manually.
+- Be selective with which output and code you do and do not show your audience. 
+- Don't use RMarkdown instead of or like R-scripts.
+- Run more complex statistical models in a separate script, save the model output and read it into your script.
+
+
+## Recommended reading
+
+- Chapter 7 in ["Doing Data Science in R"](https://www.mjandrews.org/book/ddsr/) [@andrews2021doing]
+- Chapter 27 in ["R for Data Science"](https://r4ds.had.co.nz/r-markdown.html) [@wickham2016r]
+- For formatting tables using `kableExtra` check [here](https://cran.r-project.org/web/packages/kableExtra/vignettes/awesome_table_in_html.html)
+- Check the [`rmarkdown` website](https://rmarkdown.rstudio.com/lesson-1.html).  
+
+
+## References {.smaller}
+
+<style>
+slides > slide { overflow: scroll; }
+slides > slide:not(.nobackground):after {
+  content: '';
+}
+</style>
+
+
