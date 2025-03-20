@@ -24,6 +24,8 @@ library(magick)
 library(brms)
 library(ggthemes)
 library(mixtools)
+library(tidygraph)
+library(ggraph)
 theme_set(theme_bw(base_size = 18) +
             theme(legend.position = "top", 
                   legend.justification = "right"))
@@ -53,13 +55,30 @@ theme_set(theme_bw(base_size = 18) +
 
 
 
-
 ## Normal linear model (formal description)
 
 
 <div style="float: left; width: 30%;">
 
-- Model of how the distribution of one variable, known as the *outcome variable*, varies as a function of other variables, known as the *explanatory* or *predictor variables*.
+
+
+$$
+\begin{aligned}
+y_i &\sim \mathcal{N}(\mu, \sigma^2)
+\end{aligned}
+$$
+</div>
+
+<div style="float: right; width: 65%;">
+Model of how the distribution of one variable, known as the *outcome variable*, varies as a function of other variables, known as the *explanatory* or *predictor variables*.
+</div>
+
+
+
+## Normal linear model (formal description)
+
+
+<div style="float: left; width: 30%;">
 
 $$
 \begin{aligned}
@@ -241,11 +260,8 @@ sigma(model) # Standard deviation
 ```
 
 
-## Exercise
+Exercise: complete script `normal_model_simulation.R`
 
-Complete script `linear-models/exercises/normal_model_simulation.R`
-
-Observe how changing the number of observations affects the model estimates.
 
 ## Real data 
 
@@ -257,7 +273,7 @@ Observe how changing the number of observations affects the model estimates.
 - We can use linear models to estimate parameter values from the data by which we make assumptions about the process that generates the data.
 
 
-# Running example: @martin2010planning 
+# Real (hierarchical) data: @martin2010planning 
 
 
 ## @martin2010planning data (Experiment 3a)
@@ -275,14 +291,13 @@ p1 + p2
 ```
 
 ```{r}
-data <- read_csv("../data/martin-etal-2010-exp3a.csv") %>% glimpse()
+(data <- read_csv("../data/martin-etal-2010-exp3a.csv"))
 ```
 
 
 ```{r}
 summarise(data, across(c(ppt, item), list(n = ~length(unique(.))), .names = "{col}"))
 ```
-
 
 
 ## Aggregation by participants (across items)
@@ -292,8 +307,53 @@ In standard repeated measures ANOVAs only one source of variance can be modelled
 For example one would aggregate across items and by-participant neglecting the by-items variance.
 
 ```{r}
-data_ppt <- data %>% summarise(rt = mean(rt), .by = c(nptype, ppt)) 
-data_ppt
+(data_ppt <- summarise(data, rt = mean(rt), .by = c(nptype, ppt)))
+```
+
+
+
+
+## Conditions nested within participants
+
+```{r fig.height=4, fig.width=10, echo = F}
+# Parameters
+n_participants <- 12
+
+# Create the hierarchical structure
+edges <- tibble::tibble(from = character(), to = character())
+
+# Add individual participants under "Participants"
+for (p in 1:n_participants) {
+  edges <- edges %>%
+    add_row(from = "Participants", to = paste0("P", p))
+}
+
+# Connect each individual participant to both conditions
+for (p in 1:n_participants) {
+  edges <- edges %>%
+    add_row(from = paste0("P", p), to = "simple\nNP") %>%
+    add_row(from = paste0("P", p), to = "conjoined\nNP")
+}
+
+# Convert to graph
+graph <- as_tbl_graph(edges, directed = TRUE) 
+
+# Create a layout and adjust the x-coordinates of the top nodes
+layout <- create_layout(graph, layout = "auto")
+layout$x[layout$name == "simple\nNP"] <- layout$x[layout$name == "simple\nNP"] - 2
+layout$x[layout$name == "conjoined\nNP"] <- layout$x[layout$name == "conjoined\nNP"] + 2
+
+ggraph(layout) +  
+  geom_edge_link(aes(start_cap = label_rect(node1.name), 
+                     end_cap = label_rect(node2.name))) +
+  geom_node_label(aes(label = name), 
+                  fill = "lightblue", 
+                  color = "black", 
+                  size = 4) +
+  theme_void() +
+  coord_cartesian(clip = 'off') 
+
+
 ```
 
 
@@ -350,7 +410,7 @@ $\beta_1$ is the difference in rts between conjoined and simple NPs. Therefore, 
 
 $\beta_0 + \beta_1 \cdot 1 = \beta_0 + \beta_1$,
 
-and finally $\text{ppt}_i \sim \mathcal{N}(0, \sigma^2_\text{ppt})$
+and finally $\text{ppt}_i \sim \mathcal{N}(0, \sigma^2_\text{ppt})$.
 
 
 ## Model implementation in R
@@ -363,7 +423,7 @@ m <- aov_car(rt ~ Error(ppt/nptype), data = data_ppt)
 summary(m)
 ```
 
-Linear mixed-effects model@
+Linear mixed-effects model:
 
 ```{r}
 library(lme4)
@@ -380,11 +440,11 @@ anova(m)
 
 Complete exercise script 
 
-`linear-models/exercises/repeated_measures_model.R`
+`repeated_measures_model.R`
 
 and after that 
 
-`linear-models/exercises/mixed_effects_model.R`
+`mixed_effects_model.R`
 
 
 ## Item variation (by-image sets means)
@@ -402,99 +462,99 @@ data %>%
   theme(legend.position = "none")
 ```
 
+
+
 ## What's a mixed effects model?
 
-- Models with a combination of fixed (intercepts and slopes) and random effects.
-- Repeated measures ANOVA are a special type of mixed-effects models.
-- Linear models is not as contrained as ANOVAs.
+- Models with a combination of fixed (intercepts and slopes) and random effects: repeated measures ANOVA are a special type of mixed-effects models.
 - Fixed effects: systematic / deterministic effects (e.g. age, trial id, grouping variables)
 - Random effects: non-systematic effects (e.g. ppts, items, class, country)
-- Random effects can be nested: people within country
+- Random effects can be nested: people within country; students within classroom within school within area etc.
 - Sometimes the differences can be blurry: comparing differences between two test sites rather than treating test sites as repeated measures variable.
+- Allows to address multi-level (hierarchical) and crossed structure in the data.
 
-## Crossed random intercepts for participants and items
 
-- Repeated-measures ANOVA can only handle either participant or item variance
-- Linear mixed-effects models can capture both [@baayen2008mixed]
+## Crossed participants and items
 
+```{r fig.height=4, fig.width=10, echo = F}
+# Parameters
+n_participants <- 12
+n_items <- c(1, "...", 48)
+
+# Create the hierarchicalstructure
+edges <- tibble::tibble(from = character(), to = character())
+
+# Add individual participants under "Participants"
+for (p in 1:n_participants) {
+  for (i in n_items){
+    edges <- edges %>%
+      add_row(from = "Participants", to = paste0("[", p, ", ", i, "]")) %>% 
+      add_row(from = "Items", to = paste0("[", p, ", ", i, "]"))
+  }
+}
+
+# Connect each individual participant to both conditions
+for (p in 1:n_participants) {
+    for (i in n_items){
+      edges <- edges %>%
+        add_row(from = paste0("[", p, ", ", i, "]"), to = "simple\nNP") %>%
+        add_row(from = paste0("[", p, ", ", i, "]"), to = "conjoined\nNP")
+    }
+}
+
+# Convert to graph
+graph <- as_tbl_graph(edges, directed = TRUE) 
+
+# Create a layout and adjust the x-coordinates of the top nodes
+layout <- create_layout(graph, layout = "auto")
+layout$x[layout$name == "Participants"] <- layout$x[layout$name == "Participants"] - 8
+layout$x[layout$name == "Items"] <- layout$x[layout$name == "Items"] + 8
+layout$x[layout$name == "simple\nNP"] <- layout$x[layout$name == "simple\nNP"] - 8
+layout$x[layout$name == "conjoined\nNP"] <- layout$x[layout$name == "conjoined\nNP"] + 8
+
+ggraph(layout) +  
+  geom_edge_link(aes(start_cap = label_rect(node1.name), 
+                     end_cap = label_rect(node2.name))) +
+  geom_node_label(aes(label = name), 
+                  fill = "lightblue", 
+                  color = "black", 
+                  size = 3) +
+  theme_void() +
+  coord_cartesian(clip = 'off') 
+
+```
+
+
+## Crossed participants and items
+
+- Traditional repeated-measures ANOVA can only handle one source of variance (participant or item).
+- Linear mixed-effects models can capture both (and more) [@baayen2008mixed].
+
+
+```{r eval = F}
+m <- lmer(rt ~ nptype + ( 1 | ppt ) + ( 1 | item ), data = data)
+```
+
+```{r eval = T, echo = F}
+m <- lme4::lmer(rt ~ nptype + (1|ppt) + (1|item), data = data)
+```
+
+
+
+## Crossed participants and items
 
 ```{r}
-m <- lmer(rt ~ nptype + (1|ppt) + (1|item), data = data)
+summary(m)$varcor
 ```
 
 ```{r}
-summary(m)$coef
+sigma(m)
 ```
 
 
+## Random intercepts
 
-## How to get null-hypothesis for `lmer` models?
-
-
-- Likelihood ratio test
-
-```{r}
-m_null <- lmer(rt ~ 1 + ( 1 | ppt ) + ( 1 | item ), data = data)
-anova(m_null, m)
-```
-
-- Satterthwaite approximation for degrees of freedom (`lmerTest`)
-
-```{r}
-m <- lmerTest::lmer(rt ~ nptype + (1|ppt) + (1|item), data = data)
-summary(m)$coef
-```
-
-
-- *t*-values larger than |2| roughly correspond to a significance level of $\alpha = .05$ [@baa08book]
-- Confidence intervals: 95% CI shows the range of hypotheses that can be ruled out for $\alpha = .05$
-
-```{r}
-confint(m, "nptypesimple")
-```
-
-- But who needs *p*-values anyway :)
-
-
-## Crossed random intercepts for participants and items
-
-```{r}
-summary(m)
-```
-
-## Random intercepts (variances)
-
-```{r echo=F}
-ri_ppt <- ranef(m)$ppt %>% 
-  as.data.frame() %>% 
-  rownames_to_column("ppt")
-ri_items <- ranef(m)$item %>% 
-  as.data.frame() %>% 
-  rownames_to_column("items")
-
-# Plot for Subject random intercepts
-p1 <- ggplot(ri_ppt, aes(x = reorder(ppt, `(Intercept)`), y = `(Intercept)`)) +
-    geom_point() +
-    geom_hline(yintercept = 0, linetype = "dashed") +
-    labs(x = "Participants",
-         y = "Random Intercept") +
-    coord_flip()
-
-# Plot for Group random intercepts
-p2 <- ggplot(ri_items, aes(x = reorder(items, `(Intercept)`), y = `(Intercept)`)) +
-    geom_point() +
-    geom_hline(yintercept = 0, linetype = "dashed") +
-    labs(x = "Image sets",
-         y = "Random Intercept") +
-    coord_flip()
-
-# Display the plots
-p1 + plot_spacer() + p2 + plot_layout(widths = c(.45, .1, .45))
-```
-
-## Random intercepts (variances)
-
-```{r echo=F}
+```{r echo=F, fig.width=10}
 ri_ppt <- ranef(m)$ppt %>% 
   as.data.frame() %>% 
   rownames_to_column("ppt") %>% 
@@ -506,26 +566,33 @@ ri_items <- ranef(m)$item %>%
   mutate(across(`(Intercept)`, ~m@beta[1] + .))
 
 # Plot for Subject random intercepts
-p1 <- ggplot(ri_ppt, aes(x = reorder(ppt, `(Intercept)`), y = `(Intercept)`)) +
-    geom_point() +
+p1 <- ggplot(ri_ppt, aes(x = reorder(ppt, `(Intercept)`), y = `(Intercept)`, label = ppt)) +
+    geom_label() +
     geom_hline(yintercept = m@beta[1], linetype = "dashed") +
-    labs(x = "Participants",
+    labs(x = "",
+         subtitle = "Participants",
          y = "Random Intercept") +
-    theme_minimal() +
-    coord_flip()
+    coord_flip() +
+    theme(axis.text.y = element_blank(),
+          axis.ticks.y = element_blank())
 
 # Plot for Group random intercepts
-p2 <- ggplot(ri_items, aes(x = reorder(items, `(Intercept)`), y = `(Intercept)`)) +
-    geom_point() +
+p2 <- ggplot(ri_items, aes(x = reorder(items, `(Intercept)`), y = `(Intercept)`, label = items)) +
+    geom_label(size = 2) +
     geom_hline(yintercept = m@beta[1], linetype = "dashed") +
-    labs(x = "Image sets",
+    labs(x = "",
+         subtitle = "Items",
          y = "Random Intercept") +
-    theme_minimal() +
-    coord_flip()
+    coord_flip() +
+    theme(axis.text.y = element_blank(),
+          axis.ticks.y = element_blank())
+
 
 # Display the plots
-p1 + p2
+p1 + plot_spacer() + p2 + plot_layout(widths = c(.45, .05, .45))
 ```
+
+
 
 ## Predicted outcomes
 
@@ -555,68 +622,73 @@ contrasts(factor(data$nptype))
 ```
 
 
-## What does the model predict for participants and item?
+## Null-hypothesis test for `lmer` models?
+
+
+*t*-values larger than |2| roughly correspond to a significance level of $\alpha = .05$ [@baa08book]
 
 ```{r}
+summary(m)$coef
+```
+
+Likelihood-ratio test
+
+```{r}
+m_null <- lmer(rt ~ 1 + ( 1 | ppt ) + ( 1 | item ), data = data)
+anova(m_null, m)
+```
+
+Satterthwaite approximation for degrees of freedom (`lmerTest`)
+
+```{r}
+m <- lmerTest::lmer(rt ~ nptype + ( 1 | ppt ) + ( 1 | item ), data = data)
+summary(m)$coef
+```
+
+
+Confidence intervals: 95% CI shows the range of hypotheses that can't be ruled out for $\alpha = .05$
+
+```{r}
+confint(m, "nptypesimple")
+```
+
+
+
+
+
+
+## Predicted effects by participants and items
+
+```{r echo = F}
 data_pred <- expand.grid(item = 1:48, ppt = 1:12, nptype = unique(data$nptype)) %>% 
   mutate(pred = predict(m, newdata = .),
          m = "random intercepts")
 ```
 
-```{r fig.width=12, fig.height=10, echo = F}
+```{r fig.width=10, fig.height = 8, echo = F}
 ggplot(data_pred, aes(x = nptype, y = pred, group = item)) +
   geom_point(size = .1) +
   geom_line(linewidth = .1) +
-  facet_wrap(~ppt, scales = "free", labeller = label_both) +
-  labs(y = "predicted rt", caption = "Lines represent different items")
+  theme_bw(base_size = 11) +
+  facet_wrap(~ppt, scales = "free", labeller = label_both, ncol = 4) +
+  labs(y = "predicted rt", caption = "Lines represent items")
 ```
 
-## Random intercepts and random slopes models
+## Crossed random intercepts and random slopes model
 
-- Random slopes: NP-type effect is differently strong for certain participants and items.
-- Correlation between random intercepts and slopes: E.g. NP-type effect might be weaker for participants / items with longer rts.
-- Maximal random effects structure [@barr2013random]: for repeated measures within participants design we need random intercepts for participants and items with by-participants and by-items random slopes for NP type.
-
-<div style="float: left; width: 45%;">
-```{r}
-select(data, item, nptype) %>% unique() %>% arrange(item, nptype)
-```
-
-</div>
-
-<div style="float: right; width: 45%;">
-
-```{r}
-select(data, ppt, nptype) %>% unique() %>% arrange(ppt, nptype)
-```
-
-</div>
-
-
-## Random intercepts and random slopes models
+- Random intercepts: size of np-type effect is constant.
+- Random slopes: size of np-type effect varies by participants and items.
+- Correlation between random intercepts and random slopes: e.g. np-type effect might be weaker for participants / items with longer rts.
+- Maximal random effects structure [@barr2013random]: for repeated-measures designs with crossed participants and items, we need random intercepts for participants and items with by-participants and by-items random slopes.
 
 
 ```{r}
-# Maximal random effects structure (with correlation)
-m_max <- lmer(rt ~ nptype + (nptype|ppt) + (nptype|item), data = data)
+# Random intercepts model
+m <- lmer(rt ~ nptype + ( 1 | ppt ) + ( 1 | item ), data = data)
 
-# Maximal random effects structure (without correlation)
-m_max_nocor <- lmer(rt ~ nptype + (nptype||ppt) + (nptype||item), data = data)
-```
+# Maximal random effects structure 
+m_max <- lmer(rt ~ nptype + ( nptype | ppt ) + ( nptype | item ), data = data)
 
-
-```{r echo = F}
-data_pred_nocor <- expand.grid(item = 1:48, ppt = 1:12, nptype = unique(data$nptype)) %>% 
-  mutate(pred = predict(m_max_nocor, newdata = .),
-         m = "without correlation")
-```
-
-```{r fig.width=12, fig.height=10, echo = F, eval=F}
-ggplot(data_pred_nocor, aes(x = nptype, y = pred, group = item)) +
-  geom_point(size = .1) +
-  geom_line(linewidth = .1) +
-  facet_wrap(~ppt, scales = "free", labeller = label_both) +
-  labs(y = "predicted rt", caption = "Lines represent different items")
 ```
 
 ```{r echo = F}
@@ -625,44 +697,37 @@ data_pred_cor <- expand.grid(item = 1:48, ppt = 1:12, nptype = unique(data$nptyp
          m = "with correlation")
 ```
 
-```{r fig.width=12, fig.height=10, echo = F, eval = F}
-ggplot(data_pred_cor, aes(x = nptype, y = pred, group = item)) +
-  geom_point(size = .1) +
-  geom_line(linewidth = .1) +
-  facet_wrap(~ppt, scales = "free", labeller = label_both) +
-  labs(y = "predicted rt", caption = "Lines represent different items")
-```
 
 ## Random intercepts and random slopes models 
 
-```{r fig.width=13}
-bind_rows(data_pred, data_pred_cor, data_pred_nocor) %>% 
+```{r fig.width=8, fig.height=4.5, echo = F}
+bind_rows(data_pred, data_pred_cor) %>% 
   filter(ppt %in% c(7, 11)) %>% 
-  mutate(across(m, ~case_when(str_detect(., "intercepts") ~ "\n(1|ppt) + (1|item)",
+  mutate(across(m, ~case_when(str_detect(., "intercepts") ~ "\n( 1 | ppt ) + ( 1 | item )",
                               str_detect(., "without") ~ "\n(nptype||ppt) + (nptype||ppt)",
-                              str_detect(., "with ") ~ "\n(nptype|ppt) + (nptype|ppt)"))) %>% 
+                              str_detect(., "with ") ~ "\n( nptype | ppt ) + ( nptype | item )"))) %>% 
   rename(`random effects` = m) %>% 
   ggplot(aes(x = nptype, y = pred, group = item)) +
   geom_point(size = .1) +
   geom_line(linewidth = .1) +
+  theme_bw(base_size = 11) +
   facet_grid(ppt ~ `random effects`, scales = "free", labeller = label_both) +
-  labs(y = "predicted rt", caption = "Lines represent different items")
+  labs(y = "predicted rt", caption = "Lines represent items")
 
 ```
 
-## Model coefficients of maximal random-effects model 
+## Model summary
 
 ```{r}
-# Maximal random effects structure (with correlation)
-m_max <- lmer(rt ~ nptype + (nptype|ppt) + (nptype|item), data = data)
+# Maximal random effects structure 
 summary(m_max)
 ```
 
 
 
-## Hypothetical examples for maximal random effects structure
+## Hypothetical examples {.smaller}
 
-Task: pair designs with their corresponding maximal random-effects structure!
+Task: Pair designs with their corresponding maximal random-effects structure!
 
 - Design 1 (between participants / within items): both NP type conditions were presented for each item set but half of the participants saw simple NPs and the other half saw conjoined NPs.
 - Design 2 (within participants / within items): each participant saw both conditions and each item was presented in both conditions.
@@ -671,75 +736,91 @@ Task: pair designs with their corresponding maximal random-effects structure!
 
 
 ```{r eval=F}
-Model_A <- lmer(rt ~ nptype + (1|ppt) + (nptype|item), data = data) 
-Model_B <- lmer(rt ~ nptype + (1|ppt) + (1|item), data = data)
-Model_C <- lmer(rt ~ nptype + (nptype|ppt) + (nptype|item), data = data) 
-Model_D <- lmer(rt ~ nptype + (nptype|ppt) + (1|item), data = data) 
+Model_A <- lmer(rt ~ nptype + ( 1 | ppt ) + ( nptype | item ), data = data) 
+Model_B <- lmer(rt ~ nptype + ( 1 | ppt ) + ( 1 | item ), data = data)
+Model_C <- lmer(rt ~ nptype + ( nptype | ppt ) + ( nptype | item ), data = data) 
+Model_D <- lmer(rt ~ nptype + ( nptype | ppt ) + ( 1 | item ), data = data) 
 ```
 
-
-
-## Exercise
-
-Complete exercise script `linear-models/exercises/mixed_effects_model_rirs.R`
+Exercise: complete exercise script `mixed_effects_model_rirs.R`
 
 
 
 
-## Generalised linear models
+## Generalised linear models {.smaller}
 
 Type of outcome variable
 
-- Continuous: `lme4::lmer(dv ~ iv + (random slopes | random intercepts), data = data)`
-- Binary: `lme4::glmer(dv ~ iv + (random slopes | random intercepts), data = data, family = binomial())` 
-- Count: `lme4::glmer(dv ~ iv + (random slopes | random intercepts), data = data, family = poisson())`
-  - Also negative-binomial `lme4::glmer.nb` and zero-inflated count models `NBZIMM::glmm.zinb`
-- Ordinal: `ordinal::clmm(dv ~ iv + (random slopes | random intercepts), data = data)`
+Continuous: 
 
+```{r eval = F}
+library(lme4)
+model <- lmer(dv ~ iv + ( random slopes | random intercepts ), data = data)
+```
+
+Binary: 
+
+```{r eval = F}
+library(lme4)
+model <- glmer(dv ~ iv + ( random slopes | random intercepts ), data = data, family = binomial())
+```
+
+Count: 
+
+```{r eval = F}
+library(lme4)
+model <- glmer(dv ~ iv + ( random slopes | random intercepts ), data = data, family = poisson())
+```
+
+
+Also negative-binomial `lme4::glmer.nb` and zero-inflated count models `NBZIMM::glmm.zinb`.
+
+Ordinal: 
+
+```{r eval = F}
+library(ordinal)
+model <- clmm(dv ~ iv + ( random slopes | random intercepts ), data = data)
+```
 
 Frequentist mixed-effects models require familiarity with different packages.
 
 
-## Convergence failures {.smaller}
+## Convergence failures {.columns-2}
 
-- Maximal random effects structure were introduced as the gold-standard for repeated-measure experiments [@barr2013random; @baayen2008mixed].
-- These are typically easy to fit for simple designs with balanced samples (few missing data) or indeed simulations [@barr2013random].
-- Convergence failures for designs as simple 2$\times$2 repeated-measures designs are well documented in the literature [@bates2015parsimonious; @eager2017mixed; @kimball2016beyond].
-- Overparametrisation: unidentifiable parameter estimates [@bates2015parsimonious]
-- `lme4` author Bates proposed ways to deal with convergence failures by using "parsimonious" random effects structures [@bates2015parsimonious] 
-- Model selection based on failure to fit a more complex one; some sources of random errors will not be addressed.
-- Alternatively use Bayesian models: Bayesian model converge *by definition* (as the number of iterations approaches $\infty$).
+- Maximal random effects structure were introduced as gold-standard for repeated-measures experiments [@barr2013random; @baayen2008mixed].
+- Easy to fit for simple designs with balanced samples and simulations [@barr2013random].
+- Convergence failures are well documented in the literature [@bates2015parsimonious; @eager2017mixed; @kimball2016beyond].
+
+\
+
+- Overparameterisation: unidentifiable parameter estimates [@bates2015parsimonious].
+- `lme4` author Bates proposed the use of "parsimonious" random-effects structures [@bates2015parsimonious].
+- Model selection based on failure to fit more complex model.
 
 
-Top tip: 
+## Alternative 
 
 - Convergence failures (and other problems like floor and ceiling effects) can be (easily) addressed in Bayesian models.
-- There is no other R package that allows a straightforward implementation of as many probability models as `brms` [@burkner2017brms] using a syntax that roughly mimics `lme4`
-- More flexibility is on possible when using Stan directly [@annis2017bayesian; @carpenter2017stan].
+- Bayesian model converge *by definition* (as the number of iterations approaches $\infty$).
 
 
+# Fitting mixed-effects models in `brms` | [@burkner2017brms; @brms2]
 
-
-
-# Fitting a model in `brms` | [@burkner2017brms; @brms2]
-
-## `brms` {.columns-2}
+## `brms` [@burkner2017brms]  {.columns-2 .smaller}
 
 - *R* package for Bayesian models
-- (Almost) no more complicated to fit than `lme4`s.
-- More probability models than other regressions packages:
-  - `gaussian`, `lognormal`, `bernoulli`, `poisson`, `zero_inflated_poisson`, `skew_normal`, `shifted_lognormal`, `exgaussian`, *et cetera*
-  - and allows mixture models, nonlinear syntax, (un)equal variance signal-detection theory, multivariate models
+- (Almost) no more complicated to fit than `lme4` models.
+- Syntax deliberately mimics `lme4`.
+- More probability models than other packages: `gaussian`, `lognormal`, `bernoulli`, `poisson`, `zero_inflated_poisson`, `skew_normal`, `shifted_lognormal`, `exgaussian`, *et cetera*
+- Allows mixture models, nonlinear syntax, (un)equal variance signal-detection theory, multivariate models
   
 \
-  
-- Under the hood: `brms` creates Stan code to compile a probabilistic MCMC (Markov Chain Monte Carlo) sampler.
-- Compiling the sampler and for the sampler to obtain the full posterior can take times.
 
+- More flexibility is only with Stan [@annis2017bayesian; @carpenter2017stan].
+- `brms` creates Stan code to compile a probabilistic MCMC (Markov Chain Monte Carlo) sampler.
+- Compiling the sampler and obtaining the full posterior can take time.
 
-## Exercise
-
-Complete script `linear-models/exercises/mixed_effects_model_brms.R`
+Exercise: complete script `mixed_effects_model_brms.R`
 
 
 ## *R* syntax
@@ -748,14 +829,14 @@ Frequentist mixed-effects models
 
 ```{r eval=T}
 library(lme4)
-fit_lmer <- lmer(rt ~ nptype + (nptype|ppt) + (nptype|item), data = data)
+fit_lmer <- lmer(rt ~ nptype + ( nptype | ppt ) + ( nptype | item ), data = data)
 ```
 
 Bayesian mixed-effects models
 
 ```{r eval=F}
 library(brms)
-fit_brm <- brm(rt ~ nptype + (nptype|ppt) + (nptype|item), data = data)
+fit_brm <- brm(rt ~ nptype + ( nptype | ppt ) + ( nptype | item ), data = data)
 ```
 
 ```{r eval = T, echo = F}
@@ -786,10 +867,12 @@ fixef(fit_brm) # Coefficients of Bayesian model
 
 ## Two universes
 
-- Two different ways of generalising from sample to the population: 
-- What do the data tell us about the population?
 - **Null-hypothesis significance testing**
 - **Bayesian inference**
+
+\
+
+ Two different ways of generalising from sample to the population: What do the data tell us about the truth?
 
 
 ## Null-hypothesis significance testing 
@@ -807,23 +890,20 @@ $$
 
 
 
-## Its problems {.columns-2}
+## Its problems {.columns-2 .smaller}
 
-- Statistical significance is not binary but continuous.
-- How often are we actually interested in or seriously believe in $H_0$?
+- People think of statistical significance as continuous not binary.
+- How often do we actuallybelieve in $H_0$?
 - What are you doing if $p=0.051$? 
 - Stopping rule
-- $\alpha$-level of 0.05 implies that there is a 5% chance that:
-    - our effect doesn't replicate (isn't real) 
-    - we will not observe an effect that is real
-- This seems even worse in reality [@amrhein2019inferential;@loken2017measurement]
+- $\alpha$-level of 0.05 implies there is a 5% chance that:
+    - our effect isn't real. 
+    - we'll miss an effect that is real.
+<!-- - This seems even worse in reality [@amrhein2019inferential;@loken2017measurement] -->
 
 \
 
-- Trade-off of statistical significance, effect size, and sample size: 
-  - Smaller effects can become significant when the sample is large enough.
-  - But how plausible is a small effect (e.g. mean difference, correlation) for what we are interested in?
-  - What really matters is that the size of the effect is what we would expect it to be.
+- Focus on significance: small effects can become significant when the sample is large enough.
 - Systematic misinterpretations of *p*-values [@colquhoun2017reproducibility; @greenland2016statistical] and CIs [@hoekstra2014robust; @morey2016fallacy].
 
 
@@ -842,10 +922,30 @@ $$
 $$
 \underbrace{Pr(\theta \mid \text{data})}_{\text{posterior}} \propto \underbrace{Pr(\theta)}_{\text{prior}} \cdot \underbrace{Pr(\text{data} \mid \theta)}_{\text{likelihood}}
 $$
+
 - Likelihood: probability of data given the model parameter value(s) 
 - Prior: what did we already know about model parameter(s)
 - Posterior: our updated belief in the parameter value(s) after seeing the data
 
+
+
+## Why is Bayesian inference important?
+
+> Instead of concluding
+
+\
+
+$$
+Pr(\text{data} \mid H_0 = \text{TRUE})
+$$
+
+> we can answer
+
+\
+
+$$
+Pr(H \mid \text{data})
+$$
 
 
 
@@ -856,45 +956,19 @@ It tells us what we want to know!
 
 \
 
+- What's the probability of an effect given the data (and what we already knew before)?
 - Summary stats of a Bayesian model are often very similar to what people *think* frequentist quantities (*p*-values, CIs) mean [@nicenboim2016statistical]:
 - What's the relative evidence for one model (e.g., $H_0$) vs. another (e.g., $H_1$)?
 - What interval contains an unknown parameter value with .95 probability?
+<!-- - Results are not dependent on sampling plan [@kruschke2018rejecting]. -->
 
-
-## Why is Bayesian inference important?
-
-> Instead of concluding
-
-\
-
-$$
-p(\text{data} \mid H_0 = \text{TRUE})
-$$
-
-> we can answer
-
-\
-
-$$
-p(H \mid \text{data})
-$$
-
-
-
-## Why is Bayesian inference important?
-
-- What's the probability of an effect given the data (and what we already knew before)?
-- Useful for small data sets for which prior information plays a huge role.
-- Probabilistic sampling can handle convergence failures, missing data problems, complex models (many parameters, sources of random error), ceiling / floor effects, identifiability issues.
-- Results are not dependent on sampling plan [@kruschke2018rejecting].
-- Flexible data modeling is **now** easily available (`brms`, `rstanarm`, `rethinking`).
 
 
 
 ## Why is Bayesian inference important?
 
 - Estimate uncertainty over parameter values based on the observed data [@kruschke2014doing].
-- For this we need to start with
+- For this we need 
 
 1. a probability model (e.g. a normal distribution and a set of predictors)
 2. a *prior* (on e.g. means, difference, variability)
@@ -908,7 +982,7 @@ $$
 # Convergence and model diagnostics | see @lambert2018student for HMC
 
 
-## So what about this?
+## So what about this? {.smaller}
 
 <div style="float: left;width: 55%">
 
@@ -920,24 +994,16 @@ $$
 Progress of probabilistic sampler.
 
 By default:
+
 - 2,000 iterations for parameter estimation per chain 
 - `iterations / 2` warm-up samples: discarded eventually 
 - 4 chains to establish convergence
 - Change `cores` (check `parallel::detectCores()`) for running chains in parallel.
 - How many posterior samples have we got for inference (`= chains * (iterations - warm-up)`)?
 - How many iterations / chains do you need?
-</div>
-
-
-## Parameter estimation
-
-<div style="float: left;width: 40%">
-
-- **Hamiltonian Monte Carlo:** Markov chain Monte Carlo method for obtaining random samples.
-- Probability of random samples is estimated given the data and the prior.
-- Direction changes if probability of proposed estimate is lower than previous one.
 
 </div>
+
 
 
 ## Parameter estimation
@@ -952,7 +1018,7 @@ By default:
 
 <div style="float: right;width: 55%">
 
-```{r }
+```{r echo = F}
 sim <- fit_brm$fit@sim
 samples <- map(1:4, ~sim$samples[[.]] %>%
                  as_tibble() %>%
@@ -964,7 +1030,7 @@ samples <- map(1:4, ~sim$samples[[.]] %>%
          chain = factor(chain))
 ```
 
-```{r fig.width=5}
+```{r fig.width=5, echo = F}
 pivot_wider(samples, names_from = name, values_from = value) %>%
   filter(chain == 1) %>%
   mutate(chain = paste0("Chain: ", chain)) %>%
@@ -995,7 +1061,7 @@ pivot_wider(samples, names_from = name, values_from = value) %>%
 
 <div style="float: right;width: 55%">
 
-```{r fig.width=5}
+```{r fig.width=5, echo = F}
 pivot_wider(samples, names_from = name, values_from = value) %>%
   filter(chain == 1) %>%
   mutate(chain = paste0("Chain: ", chain)) %>%
@@ -1014,105 +1080,106 @@ pivot_wider(samples, names_from = name, values_from = value) %>%
 
 
 
-## Parameter estimation
+## Parameter estimation (traceplot)
 
-```{r}
+```{r echo =F}
 samples %>%
   filter(chain %in% 1, iteration %in% 1:100) %>%
   ggplot(aes(y=value, x = iteration, colour = chain)) +
   scale_color_viridis_d("Chains") +
   geom_path() +
-  facet_wrap(~name, scales = "free") +
-  labs(title = "Traceplot")
+  facet_wrap(~name, scales = "free") 
 ```
 
 
-## Parameter estimation
+## Parameter estimation (traceplot)
 
-```{r}
+```{r echo = F}
 samples %>%
   filter(chain %in% 1:2, iteration %in% 1:100) %>%
   ggplot(aes(y=value, x = iteration, colour = chain)) +
   scale_color_viridis_d("Chains") +
   geom_path() +
-  facet_wrap(~name, scales = "free") +
-  labs(title = "Traceplot")
+  facet_wrap(~name, scales = "free") 
 ```
 
 
-## Parameter estimation
+## Parameter estimation (traceplot)
 
-```{r}
+```{r echo =F}
 samples %>%
   filter(chain %in% 1:4, iteration %in% 1:100) %>%
   ggplot(aes(y=value, x = iteration, colour = chain)) +
   scale_color_viridis_d("Chains") +
   geom_path() +
-  facet_wrap(~name, scales = "free") +
-  labs(title = "Traceplot")
+  facet_wrap(~name, scales = "free") 
 ```
 
 
-## Parameter estimation
+## Parameter estimation (traceplot)
 
-```{r}
+```{r echo = F}
 samples %>%
   filter(chain %in% 1:4, iteration %in% 1:250) %>%
   ggplot(aes(y=value, x = iteration, colour = chain)) +
   scale_color_viridis_d("Chains") +
   geom_path() +
-  facet_wrap(~name, scales = "free") +
-  labs(title = "Traceplot")
+  facet_wrap(~name, scales = "free")
 ```
 
-## Parameter estimation
+## Parameter estimation (traceplot)
 
-```{r}
+```{r echo=F}
 samples %>%
   filter(chain %in% 1:4, iteration %in% 1:500) %>%
   ggplot(aes(y=value, x = iteration, colour = chain)) +
   scale_color_viridis_d("Chains") +
   geom_path() +
-  facet_wrap(~name, scales = "free") +
-  labs(title = "Traceplot")
+  facet_wrap(~name, scales = "free") 
 ```
 
 
-## Parameter estimation
+## Parameter estimation (traceplot)
 
-```{r}
+```{r echo = F}
 samples %>%
   filter(chain %in% 1:4, iteration %in% 1:2000) %>%
   ggplot(aes(y=value, x = iteration, colour = chain)) +
   scale_color_viridis_d("Chains") +
   geom_path() +
-  facet_wrap(~name, scales = "free") +
-  labs(title = "Traceplot")
+  facet_wrap(~name, scales = "free") 
 ```
 
-## Parameter estimation
+## Parameter estimation (traceplot)
 
-```{r}
+```{r echo = F}
 samples %>%
   filter(chain %in% 1:4, iteration %in% 1000:2000) %>%
   ggplot(aes(y=value, x = iteration, colour = chain)) +
   scale_color_viridis_d("Chains") +
   geom_path() +
-  facet_wrap(~name, scales = "free") +
-  labs(title = "Traceplot")
+  facet_wrap(~name, scales = "free") 
 ```
 
-## Exercise: model diagnostics and convergence checks
+## Model diagnostics and convergence checks
+
+<div style="float: left;width: 50%">
 
 - Traceplots: we want fat hairy caterpillars 
 - $\hat{R}$ convergence statistic; should be $<1.1$ [@gelman1992]
-- Posterior predictive checks: compare observed data $y$ and model predictions $y_{rep}$
-- Complete script `linear-models/exercises/model_diagnostics.R` 
+- Posterior predictive checks: compare data $y$ and predictions $y_{rep}$
+- Exercise: complete script `model_diagnostics.R` 
+
+</div>
+
+<div style="float: right;width: 45%">
+```{r echo = F, out.width="400px", out.height="400px"}
+include_graphics("../gfx/caterpillar.jpeg")
+```
+</div>
 
 
-
-
-# Where are the priors? | chapter 7 in @lee2014bayesian
+# Where are the priors? | see e.g. chapter 7 in @lee2014bayesian
 
 
 
@@ -1137,7 +1204,7 @@ samples %>%
 
 <div style="float: right;width: 50%;">
 
-```{r fig.width=5}
+```{r fig.width=5, echo = F}
 tibble(intercept = runif(1000, 0, 5000),
        slope = runif(1000,  -10000, 10000)) %>%
   ggplot(aes(x=intercept, y=slope)) +
@@ -1166,7 +1233,7 @@ $$
 
 <div style="float: right;width: 50%;">
 
-```{r fig.width=5}
+```{r fig.width=5, echo = F}
 tibble(intercept = runif(1000, 0, 5000),
        slope = runif(1000,  -10000, 10000)) %>%
   ggplot(aes(x=intercept, y=slope)) +
@@ -1197,7 +1264,7 @@ $$
 
 <div style="float: right;width: 50%;">
 
-```{r fig.width=5}
+```{r fig.width=5, echo = F}
 p <- tibble(intercept = rnorm(10000, mean = 1000, sd = 150),
        slope = runif(10000,  -10000, 10000)) %>%
   ggplot(aes(x=intercept, y=slope)) +
@@ -1229,7 +1296,7 @@ $$
 
 <div style="float: right;width: 50%;">
 
-```{r fig.width=5}
+```{r fig.width=5, echo = F}
 p <- tibble(intercept = rnorm(10000, mean = 1000, sd = 250),
        slope = runif(10000,  -10000, 10000)) %>%
   ggplot(aes(x=intercept, y=slope)) +
@@ -1262,7 +1329,7 @@ $$
 
 <div style="float: right;width: 50%;">
 
-```{r fig.width=5}
+```{r fig.width=5, echo = F}
 p <- tibble(intercept = rnorm(10000, mean = 1000, sd = 500),
        slope = rnorm(10000,  0, 100)) %>%
   ggplot(aes(x=intercept, y=slope)) +
@@ -1286,8 +1353,6 @@ ggExtra::ggMarginal(p, type="density", size=10, alpha = .25, margins = "both")
 
 Check defaults used earlier:
 
-\
-
 
 ```{r echo = T, eval = F}
 prior_summary(fit_brm)
@@ -1300,7 +1365,7 @@ prior %>% as_tibble() %>%
          prior = ifelse(prior == "", unique(prior)[!unique(prior) == ""], prior),
          .by = class) %>%
   select(prior:group) %>% kable() %>%
-  kable_styling("striped", full_width = F) %>%
+  kable_styling("striped", full_width = F, font_size = "small") %>%
   column_spec(1, width = "20em") %>%
   column_spec(2:4, width = "10em") 
 ```
@@ -1308,7 +1373,7 @@ prior %>% as_tibble() %>%
 ## Priors
 
 
-```{r fig.width=5}
+```{r fig.width=5, echo = F}
 p <- tibble(intercept = rstudent_t(10000, 3, 1039.5, 235),
        slope = runif(10000, -2000, 2000)) %>%
   ggplot(aes(x=intercept, y=slope)) +
@@ -1327,7 +1392,7 @@ ggExtra::ggMarginal(p, type="density", size=10, alpha = .25, margins = "both")
 
 You will refit our model with more informative priors in the next script.
 
-- Complete script `linear-models/exercises/mixed_effects_model_brms_with_priors.R` 
+- Complete script `mixed_effects_model_brms_with_priors.R` 
 
 
 
@@ -1367,7 +1432,7 @@ beta[1:5]
 
 <div style="float: right;width: 55%">
 
-```{r fig.height=4.5, fig.width=5.5}
+```{r fig.height=4.5, fig.width=5.5, echo = F}
 ggplot(data = NULL, aes(x = beta)) +
   geom_histogram(alpha = .55) +
   labs(x = bquote("Estimated effect"~hat(beta)))
@@ -1389,7 +1454,7 @@ mean(beta)
 
 <div style="float: right;width: 55%">
 
-```{r fig.height=4.5, fig.width=5.5}
+```{r fig.height=4.5, fig.width=5.5, echo = F}
 ggplot(data = NULL, aes(x = beta)) +
   geom_histogram(alpha = .55) +
   labs(x = bquote("Estimated effect"~hat(beta))) +
@@ -1413,7 +1478,7 @@ quantile(beta, probs = c(0.025, 0.975))
 
 <div style="float: right;width: 55%">
 
-```{r fig.height=4.5, fig.width=5.5}
+```{r fig.height=4.5, fig.width=5.5, echo = F}
 ggplot(data = NULL, aes(x = beta)) +
   geom_histogram(alpha = .55, bins = 50, position = "identity", show.legend = F) +
   labs(x = bquote("Estimated effect"~hat(beta))) +
@@ -1443,7 +1508,7 @@ quantile(beta, probs = c(0.055, 0.945))
 
 <div style="float: right;width: 55%">
 
-```{r fig.height=4.5, fig.width=5.5}
+```{r fig.height=4.5, fig.width=5.5, echo = F}
 ggplot(data = NULL, aes(x = beta)) +
   geom_histogram(alpha = .55, bins = 50, position = "identity", show.legend = F) +
   labs(x = bquote("Estimated effect"~hat(beta))) +
@@ -1464,13 +1529,13 @@ ggplot(data = NULL, aes(x = beta)) +
 mean(beta < 0)
 ```
 
-- See exercises: `linear-models/exercises/hypothesis_testing_post.R`
+- See exercises: `hypothesis_testing_post.R`
 
 </div>
 
 <div style="float: right;width: 55%">
 
-```{r fig.height=4.5, fig.width=5.5}
+```{r fig.height=4.5, fig.width=5.5, echo = F}
 beta2 <- beta[beta < 0]
 ggplot(data = NULL, aes(x = beta, fill = beta > 0)) +
   geom_histogram(alpha = .55, bins = 50, position = "identity", show.legend = F) +
@@ -1501,7 +1566,7 @@ mean(beta < -10)
 ## ROPE
 
 
-<div style="float: left;width: 4%">
+<div style="float: left;width: 40%">
 
 ```{r echo = T}
 quantile(beta, probs = c(.025, .5, .975))
@@ -1517,7 +1582,7 @@ There is nothing really special about 0.
 
 <div style="float: right;width: 55%">
 
-```{r fig.height=4.5, fig.width=5.5}
+```{r fig.height=4.5, fig.width=5.5, echo = F}
 ggplot(data = NULL, aes(x = beta, fill = beta > -10)) +
   geom_histogram(alpha = .55, bins = 50, position = "identity", show.legend = F) +
   geom_vline(xintercept = -10, colour = "grey20", linetype = "dotted") +
@@ -1533,15 +1598,15 @@ ggplot(data = NULL, aes(x = beta, fill = beta > -10)) +
 
 <div style="float: left;width: 55%">
 
-- Point values don't represent our beliefs about what the null hypothesis is like: $H_0 = 0$
-- Region of practical equivalence: range of values that are practically equivalent to a null effect[@kruschke2010believe; @kruschke2011bayesian].
-- Define region that is equivalent to no effect: all values in an interval of [-5, 5] msecs
+- Point values don't represent our beliefs about the null hypothesis: $H_0 = 0$
+- Region of practical equivalence: range of values that are equivalent to a null effect [@kruschke2010believe; @kruschke2011bayesian].
+- Define region that is equivalent to no effect: values in interval of [-5, 5] msecs
 
 </div>
 
 <div style="float: right;width: 45%">
 
-```{r fig.height=4.5, fig.width=4.5}
+```{r fig.height=4.5, fig.width=4.5, echo = F}
 ggplot(data = NULL, aes(x = beta)) +
   geom_histogram(alpha = .55, bins = 50, position = "identity", show.legend = F) +
   labs(x = bquote("Estimated effect"~hat(beta))) 
@@ -1553,10 +1618,9 @@ ggplot(data = NULL, aes(x = beta)) +
 
 <div style="float: left;width: 55%">
 
-
-- Point values don't represent our beliefs about what the null hypothesis is like: $H_0 = 0$
-- Region of practical equivalence: range of values that are practically equivalent to a null effect[@kruschke2010believe; @kruschke2011bayesian].
-- Define region that is equivalent to no effect: all values in an interval of [-5, 5] msecs
+- Point values don't represent our beliefs about the null hypothesis: $H_0 = 0$
+- Region of practical equivalence: range of values that are equivalent to a null effect [@kruschke2010believe; @kruschke2011bayesian].
+- Define region that is equivalent to no effect: values in interval of [-5, 5] msecs
 
 
 ```{r echo = T}
@@ -1567,7 +1631,7 @@ rope(beta, range = c(-5, 5))
 
 <div style="float: right;width: 45%">
 
-```{r fig.height=4.5, fig.width=4.5}
+```{r fig.height=4.5, fig.width=4.5, echo = F}
 ggplot(data = NULL, aes(x = beta)) +
   geom_histogram(alpha = .55, bins = 50, position = "identity", show.legend = F) +
   labs(x = bquote("Estimated effect"~hat(beta))) 
@@ -1580,10 +1644,9 @@ ggplot(data = NULL, aes(x = beta)) +
   
 <div style="float: left;width: 55%">
   
-
-- Point values don't represent our beliefs about what the null hypothesis is like: $H_0 = 0$
-- Region of practical equivalence: range of values that are practically equivalent to a null effect[@kruschke2010believe; @kruschke2011bayesian].
-- Define region that is equivalent to no effect: all values in an interval of [-5, 5] msecs
+- Point values don't represent our beliefs about the null hypothesis: $H_0 = 0$
+- Region of practical equivalence: range of values that are equivalent to a null effect [@kruschke2010believe; @kruschke2011bayesian].
+- Define region that is equivalent to no effect: values in interval of [-5, 5] msecs
 
 
 
@@ -1596,7 +1659,7 @@ rope(beta, range = c(-5, 5))
 
 <div style="float: right;width: 45%">
 
-```{r fig.height=4.5, fig.width=4.5}
+```{r fig.height=4.5, fig.width=4.5, echo = F}
 ggplot(data = NULL, aes(x = beta, fill = beta > -5 & beta < 5)) +
   geom_histogram(alpha = .55, bins = 50, position = "identity", show.legend = F) +
   geom_vline(xintercept = 5, colour = "grey20", linetype = "dotted") +
@@ -1611,10 +1674,9 @@ ggplot(data = NULL, aes(x = beta, fill = beta > -5 & beta < 5)) +
 
 <div style="float: left;width: 55%">
 
-> - Region of practical equivalence: range of values that are practically equivalent [@kruschke2010believe; @kruschke2011bayesian].
-> - Point values don't represent our beliefs about what the null hypothesis is like: $H_0 = 0$
-  > - The ROPE is the range of values that are practically equivalent to a null effect.
-> - Define region that is equivalent to no effect: all values in interval [-Inf, 5] 
+- Point values don't represent our beliefs about the null hypothesis: $H_0 = 0$
+- Region of practical equivalence: range of values that are equivalent to a null effect [@kruschke2010believe; @kruschke2011bayesian].
+- Define region that is equivalent to no effect: values in interval [-10, Inf] 
 
 ```{r echo = T}
 library(bayestestR)
@@ -1626,7 +1688,7 @@ rope(beta, range = c(-10, Inf))
   
 <div style="float: left;width: 45%">
   
-```{r fig.height=4.5, fig.width=4.5}
+```{r fig.height=4.5, fig.width=4.5, echo = F}
 ggplot(data = NULL, aes(x = beta, fill = beta > -10 & beta < Inf)) +
   geom_histogram(alpha = .55, bins = 50, position = "identity", show.legend = F) +
   geom_vline(xintercept = -10, colour = "grey20", linetype = "dotted") +
@@ -1670,12 +1732,18 @@ abs(mean(delta)) # very small effect (see Cohen's d)
 rope(delta, range = c(-0.1, 0.1)) 
 ```
 
+
+## ROPE
+
 - The ROPE value indicates the extent to which the posterior cannot rule out a negligible effect. 
 - A meaningful effect size should have a small proportion of posterior samples within the ROPE. 
 
-## Exercise
+```{r echo = T}
+rope(delta, range = c(-0.1, 0.1)) 
+```
 
-Complete script `linear-models/exercises/hypothesis_testing_rope.R`
+
+Exercise: complete script `hypothesis_testing_rope.R`
 
 
 
@@ -1684,24 +1752,31 @@ Complete script `linear-models/exercises/hypothesis_testing_rope.R`
 
 ## Bayes Factor
 
-<div style="float: left;width: 70%;">
+<div style="float: left;width: 60%;">
 
-- *p*-values have two possible outcomes: 
->1. reject the null (i.e. $p<0.05$)
->2. inconclusive (i.e. $p>0.05$ -- go back to start)
+*p*-values have two possible outcomes: 
 
-- BFs have a continuum of three possible outcomes [@dienes2014using; @dienes2016bayes; @dienes2018four]:
->1. Reject the null / alternative hypothesis
->2. Inconclusive (get more data!)
->3. Accept the null / alternative hypothesis
+1. reject the null (i.e. $p<0.05$)
+2. inconclusive (i.e. $p>0.05$ -- go back to start)
+
+BFs have a continuum of three possible outcomes [@dienes2014using; @dienes2016bayes; @dienes2018four]:
+
+1. Reject the null / alternative hypothesis
+2. Inconclusive (get more data!)
+3. Accept the null / alternative hypothesis
 
 
 </div>
 
 
-<div style="float: right;width: 20%;">
-![](pics/bfs.png){width="105%"}
+<div style="float: right;width: 35%;">
+
+```{r echo = F, fig.height=2.5}
+include_graphics("../gfx/bfs.png")
+```
 </div>
+
+
 
 
 ## Bayes Factor 
@@ -1715,12 +1790,13 @@ $$
 </div>
 
 
-<div style="float: right;width: 75%;">
+<div style="float: right;width: 65%;">
 
 - How much more probable is one model (hypothesis) over the other?
 - How convinced should we be about the evidence for our hypothesis $H_1$ as opposed to, say, a null hypothesis $H_0$?
 - Savage-Dickey density ratio for nested models [@jeffreys1961theory; @dickey1970weighted]:
 - Height of the posterior density at zero compared to the height of the prior density at zero.
+
 </div>
 
 
@@ -1729,6 +1805,7 @@ $$
 
 ## Bayes Factor: Savage-Dickey density ratio
 
+<div style="float: left;width: 45%;">
 
 - Posterior: $\mathcal{N}(-32.2, 17.4)$
 - Prior: $\mathcal{N}(0, 100)$
@@ -1750,10 +1827,10 @@ dnorm(0, 0, 100) / dnorm(0, mean(beta), sd(beta))
 
 </div>
 
-<div style="float: right;width: 60%;">
+<div style="float: right;width: 50%;">
 
 
-```{r fig.width=5}
+```{r fig.width=5, echo = F}
 pd <- tibble(x = seq(-200, 200, by = 10),
              Prior = dnorm(x, 0, 100),
              Posterior = dnorm(x, mean(beta), sd(beta))) %>%
@@ -1776,7 +1853,9 @@ ggplot(pd, aes(x = x, y = value, colour = name)) +
 </div>
 
 
-## Make sure you know your priors
+## Bayes Factor: Savage-Dickey density ratio
+
+<div style="float: left;width: 45%;">
 
 - Posterior: $\mathcal{N}(-32.2, 17.4)$
 - Prior: $\mathcal{N}(0, 25)$
@@ -1798,10 +1877,10 @@ dnorm(0, 0, 25) / dnorm(0, mean(beta), sd(beta))
 
 </div>
 
-<div style="float: right;width: 60%;">
+<div style="float: right;width: 50%;">
 
 
-```{r fig.width=5}
+```{r fig.width=5, echo = F}
 pd <- tibble(x = seq(-200, 200, by = 10),
              Prior = dnorm(x, 0, 25),
              Posterior = dnorm(x, mean(beta), sd(beta))) %>%
@@ -1825,8 +1904,9 @@ ggplot(pd, aes(x = x, y = value, colour = name)) +
 
 
 
+## Bayes Factor: Savage-Dickey density ratio
 
-## Make sure you know your priors
+<div style="float: left;width: 45%;">
 
 - Posterior: $\mathcal{N}(-32.2, 17.4)$
 - Prior: $\mathcal{N}(0, 2000)$
@@ -1848,10 +1928,10 @@ dnorm(0, 0, 2000) / dnorm(0, mean(beta), sd(beta))
 
 </div>
 
-<div style="float: right;width: 60%;">
+<div style="float: right;width: 50%;">
 
 
-```{r fig.width=5}
+```{r fig.width=5, echo = F}
 pd <- tibble(x = seq(-200, 200, by = 10),
              Prior = dnorm(x, 0, 2000),
              Posterior = dnorm(x, mean(beta), sd(beta))) %>%
@@ -1875,23 +1955,59 @@ ggplot(pd, aes(x = x, y = value, colour = name)) +
 
 
 
+## Bayes Factor: Savage-Dickey density ratio
 
 
-
-
-
-## Bayes Factor
-
-- More informative priors give more weight to $H_0$.
-- Given such a prior, a posterior that favours $H_1$ would be more convincing: BFs capture this.
 - Regularising (skeptical) priors prevent the model to get overexcited by the sample [his words: @mcelreath2020statistical].
 - If in doubt use weakly informative priors like student-t distributions that allow for larger tails, e.g. `student_t(3, 0, 100)`
 
 
+## Student *t*-distribution: `student_t(df, mean, sd)`
+
+<div style="float: left;width: 35%;">
+
+- Symmetric continuous distribution with fat tails assigning more probability to extreme values.
+- $\nu$ parameter controls the degrees of freedom 
+- $\nu = 1$ is a Cauchy distribution 
+- When $\nu \rightarrow \infty$ the *t*-distribution becomes Gaussian.
+
+</div>
+
+
+<div style="float: right;width: 60%;">
+
+```{r fig.width=6, echo = F}
+library(LaplacesDemon)
+
+x <- seq(-10, 10, by = 0.1)
+
+tibble("t0" = dnorm(x, mean=0, sd=1),
+       "t1" = dst(x, mu=0, sigma=1, nu = 1),
+       "t2" = dst(x, mu=0, sigma=1, nu = 5),
+       "t3" = dst(x, mu=0, sigma=2, nu = 5),
+       x = x) %>%
+  pivot_longer(-x) %>%
+  ggplot(aes(x = x, y = value, colour = name)) +
+  geom_line() +
+  scale_x_continuous(limits = c(-7, 7)) +
+  scale_color_colorblind("Parameter values",
+                         breaks = paste0("t",0:3), 
+                         labels = c(bquote(mu==0*","~sigma==1),
+                                    bquote(mu==0*","~sigma==1*","~nu==1),
+                                    bquote(mu==0*","~sigma==1*","~nu==5),
+                                    bquote(mu==0*","~sigma==2*","~nu==5))) +
+  labs(x = "x", y = "density") +
+  theme(legend.justification = "top") 
+
+```
+</div>
+
+
+
 ## Exercise
 
-- Explore `hypothesis()` in the exercise: `linear-models/exercises/hypothesis_testing_bf_1.R`
-- Bonus: explore the Savage-Dickey method in `linear-models/exercises/hypothesis_testing_bf_2.R`
+- Explore `hypothesis()` in the exercise: `hypothesis_testing_bf_1.R`
+- Bonus: explore the Savage-Dickey method in `hypothesis_testing_bf_2.R`
 
 
 
@@ -1915,11 +2031,6 @@ H: simple NPs are more than 10 msecs faster than conjoined NPs
 ```{r echo = T}
 hypothesis(fit_brm, "nptypesimple < -10")
 ```
-
-
-# Compare probability models of rt data | see e.g. @matzke2009psychological; @roeser2024no
-
-
 
 
 
@@ -1955,7 +2066,7 @@ fit <- brm(outcome ~ predictor + (1|participant), data = data, family = gaussian
 ## Families of distributions (some important ones)
 
 - **Gaussian**: data come from normal distribution 
-- **Bernoulli**: binomial outcomes (yes / no; correct / incorrect) [@winter2021poisson]
+- **Bernoulli**: binomial outcomes (yes / no; correct / incorrect) 
 
 ```{r eval=F, echo=T}
 fit <- brm(outcome ~ predictor + (1|participant), data = data, family = bernoulli())
@@ -1964,8 +2075,8 @@ fit <- brm(outcome ~ predictor + (1|participant), data = data, family = bernoull
 ## Families of distributions (some important ones)
 
 - **Gaussian**: data come from normal distribution 
-- **Bernoulli**: binomial outcomes (yes / no; correct / incorrect) [@winter2021poisson]
-- **Poisson**: count data (number of words / mistakes)
+- **Bernoulli**: binomial outcomes (yes / no; correct / incorrect) 
+- **Poisson**: count data (number of words / mistakes) [@winter2021poisson]
 
 
 ```{r eval=F, echo=T}
@@ -2006,7 +2117,7 @@ fit <- brm(outcome ~ predictor + (1|participant), data = data, family = cumulati
 - **Poisson**: count data (number of words / mistakes) [@winter2021poisson]
 - **Zero-inflated Poisson**: count data with lots of zeros (number of typos per word)
 - **Cumulative**: ordinal (ordered categorical) data [@burkner2019ordinal] (Likert scales)
-- **Lognormal**: zero bound data with positive skew; also skewed / shifted (log)-Normal, Wiener Diffusion models etc. [for RT data; @matzke2009psychological]
+- **Lognormal**: zero bound data with positive skew; also skewed / shifted (log)normal, Wiener Diffusion models etc. [for RT data; @matzke2009psychological]
 
 
 ```{r eval=F, echo=T}
@@ -2014,23 +2125,9 @@ fit <- brm(outcome ~ predictor + (1|participant), data = data, family = lognorma
 ```
 
 
-## Families of distributions (some important ones)
-
-- **Gaussian**: data come from normal distribution 
-- **Bernoulli**: binomial outcomes (yes / no; correct / incorrect)
-- **Poisson**: count data (number of words / mistakes) [@winter2021poisson]
-- **Zero-inflated Poisson**: count data with lots of zeros (number of typos per word)
-- **Cumulative**: ordinal (ordered categorical) data [@burkner2019ordinal] (Likert scales)
-- **Lognormal**: zero bound continuous data with positive skew
-- **Ex-Gaussian**: continuous data with positive skew 
 
 
-```{r eval=F, echo=T}
-fit <- brm(outcome ~ predictor + (1|participant), data = data, family = exgaussian())
-```
-
-
-
+# Compare probability models of rt data | see e.g. @matzke2009psychological; @roeser2024no
 
 ## Probability models of rt data
 
@@ -2155,8 +2252,8 @@ ggplot(data, aes(x = rt)) +
 
 Fit two other probability models, namely a lognormal and a shifted lognormal model:
 
-- Complete script `linear-models/exercises/mixed_effects_models_brms_lognormal.R`
-- Complete script `linear-models/exercises/mixed_effects_models_brms_shifted_lognormal.R`
+- Complete script `mixed_effects_models_brms_lognormal.R`
+- Complete script `mixed_effects_models_brms_shifted_lognormal.R`
 
 
 
@@ -2209,12 +2306,12 @@ all_plots <- wrap_plots(plots, nrow = 2) +
         legend.position = "bottom") &
   scale_x_continuous(limits = c(min(data$rt), max(data$rt)))
 
-file_dest <- "../plots/fit2data.pdf"
+file_dest <- "../plots/fit2data.png"
 ggsave(file_dest, plot = all_plots, width = 6, height = 4)
 ```
 
-```{r}
-file_dest <- "../plots/fit2data.pdf"
+```{r echo = F, fig.height=4.5}
+file_dest <- "../plots/fit2data.png"
 include_graphics(file_dest)
 ```
 
@@ -2254,38 +2351,12 @@ log_lik(fit_brm) %>%
   mutate(obs = as.numeric(gsub(pattern = "V", replacement = "", obs))) %>%
   ggplot(aes(x = obs, y = M, ymin = M-var, ymax = M+var)) +
   geom_pointrange(fatten = .5) +
-  labs(x = "Observations", y = "log-posterior predictive density (with variance)")
+  labs(x = "Observations", y = "log-posterior predictive\ndensity (with variance)")
 ```
 
 </div>
 
 
-
-## Leave-One-Out (LOO) cross validation
-
-<div style="float: left;width: 50%;">
-
-- Approximation involved in `loo()` uses the log posterior predictive densities: how likely is each data point given the distribution parameter estimates?
-
-</div>
-
-
-<div style="float: right;width: 50%;">
-
-```{r fig.width=5, echo = F}
-log_lik(fit_brm) %>% 
-  as_tibble() %>% mutate(sample = 1:n()) %>%
-  pivot_longer(-sample, names_to = "obs", values_to = "loglik") %>%
-  group_by(obs) %>%
-  summarise(M = mean(loglik),
-            var = var(loglik)) %>%
-  mutate(obs = as.numeric(gsub(pattern = "V", replacement = "", obs))) %>%
-  ggplot(aes(x = obs, y = M, ymin = M-var, ymax = M+var)) +
-  geom_pointrange(fatten = .5) +
-  labs(x = "Observations", y = "log-posterior predictive density (with variance)")
-```
-
-</div>
 
 
 ## Leave-One-Out (LOO) cross validation
@@ -2299,7 +2370,7 @@ loo(fit_brm)
 
 </div>
 
-```{r}
+```{r echo = F}
 # product of n factors one for each data point: with theta being all parameters
 # for LOO CV we perform exclude each data point one at a time which is equivalent to multiplying posterior by factor 1/p(y_i \mid \theta)
 # LOO posterior excluding i is p(\theta \ mid y_{-i}) = p(\theta \mid y) / p(y_i \mid \theta) using the the 
@@ -2308,7 +2379,7 @@ loo(fit_brm)
 # $$p(\theta \mid y) \propto p(\theta) \prod^n_{i=1} p(y_i \mid \theta)$$
 ```
 
-```{r}
+```{r echo = F}
 # pointwise density:
 # Average likelihood of every observation in training sample
 # this is done for each set of parameters sampled from the psoterior distribution
@@ -2339,7 +2410,7 @@ log_lik(fit_brm) %>%
   mutate(obs = as.numeric(gsub(pattern = "V", replacement = "", obs))) %>%
   ggplot(aes(x = obs, y = M, ymin = M-var, ymax = M+var)) +
   geom_pointrange(fatten = .5) +
-  labs(x = "Observations", y = "log-posterior predictive density (with variance)")
+  labs(x = "Observations", y = "log-posterior predictive\ndensity (with variance)")
 ```
 
 </div>
@@ -2350,27 +2421,22 @@ log_lik(fit_brm) %>%
 
 <div style="float: left;width: 50%;">
 
-```{r echo = T}
-loo(fit_brm)
-```
-
-
 - `elpd_loo`: sum of means (expected log predictive density)
 - `p_loo`: sum of variances
 - `looic`: $-2 \cdot ($`elpd_loo`$-$`p_loo`$)$ (for deviance scale)
 
 
-```{r echo = F, echo = F}
-loos <- log_lik(fit_brm) %>% as_tibble() %>% mutate(sample = 1:n()) %>%
-  pivot_longer(-sample, names_to = "obs", values_to = "loglik") %>%
-  group_by(obs) %>%
+```{r}
+log_lik(fit_brm) %>% as_tibble() %>% 
+  mutate(sample = 1:n()) %>%
+  pivot_longer(-sample, names_to = "obs", 
+               values_to = "loglik") %>%
   summarise(mean_loglik = mean(exp(loglik)),
-            var_loglik = var(loglik)) %>% 
-  ungroup() %>%
-  summarise(elpd_loo = sum(log(mean_loglik)), # sum of mean log lik
-            p_loo = sum(var_loglik), # effective number of parameters
-            looic = -2 * (elpd_loo - p_loo) # Bayesian deviance
-            ) 
+            var_loglik = var(loglik),
+            .by = obs) %>% 
+  summarise(elpd_loo = sum(log(mean_loglik)), 
+            p_loo = sum(var_loglik),
+            looic = -2 * (elpd_loo - p_loo))
 ```
 
 
@@ -2388,7 +2454,7 @@ log_lik(fit_brm) %>%
   mutate(obs = as.numeric(gsub(pattern = "V", replacement = "", obs))) %>%
   ggplot(aes(x = obs, y = M, ymin = M-var, ymax = M+var)) +
   geom_pointrange(fatten = .5) +
-  labs(x = "Observations", y = "log-posterior predictive density (with variance)")
+  labs(x = "Observations", y = "log-posterior predictive\ndensity (with variance)")
 ```
 
 </div>
@@ -2398,13 +2464,8 @@ log_lik(fit_brm) %>%
 
 <div style="float: left;width: 50%;">
 
-```{r echo = T, echo = F}
-loo(fit_brm)
-```
 
-
-
-```{r}
+```{r echo = F}
 #difference between two deviances has a chi-squared distribution; factor of 2 scales it that way; also called the Bayesian deviance
 
 
@@ -2418,21 +2479,9 @@ loo(fit_brm)
 
 - `elpd_loo` and `looic` rarely have a direct interpretation (as opposed to `loo_R2()`): important are differences between models.
 - `p_loo` is the effective number of parameters: how flexible is the model fit.
+- Exercise: complete the script `model_comparison.R`
+- This script assumes that you have stored the posterior of these models: Gaussian, lognormal, and shifted lognormal
 
-
-
-```{r echo = F, echo = T}
-loos <- log_lik(fit_brm) %>% as_tibble() %>% mutate(sample = 1:n()) %>%
-  pivot_longer(-sample, names_to = "obs", values_to = "loglik") %>%
-  group_by(obs) %>%
-  summarise(mean_loglik = mean(exp(loglik)),
-            var_loglik = var(loglik)) %>% 
-  ungroup() %>%
-  summarise(elpd_loo = sum(log(mean_loglik)), # sum of mean log lik
-            p_loo = sum(var_loglik), # effective number of parameters
-            looic = -2 * (elpd_loo - p_loo) # Bayesian deviance
-            ) 
-```
 
 
 </div>
@@ -2455,20 +2504,6 @@ log_lik(fit_brm) %>%
 </div>
 
 
-```{r}
-#loo_R2(mixturemodel)
-#bayes_R2(mixturemodel)
-
-```
-
-
-
-
-
-## Exercise
-
-- Complete the script `linear-models/exercises/model_comparison.R`
-- This script assumes that you have stored the posterior of four models: Gaussian, lognormal, and shifted lognormal
 
 
 
@@ -2487,7 +2522,8 @@ mc$ic_diffs__ %>%
          across(comparison, ~str_replace(., "-", "vs"))) %>%
   rename_with(.fn = ~str_replace(., "LOOIC", "elpd_diff")) %>% 
   kable() %>%
-  kable_styling("striped", full_width = F) %>%
+  kable_styling("striped", 
+                 full_width = F) %>%
   column_spec(1, width = "20em") %>%
   add_footnote("`elpd_diff` is often reported as e.g. $\\\\Delta\\\\widehat{elpd}$.")
 
@@ -2515,8 +2551,6 @@ mc$ic_diffs__ %>%
 
 
 
-
-
 ## References {.smaller}
 
 <style>
@@ -2527,44 +2561,4 @@ slides > slide:not(.nobackground):after {
 </style>
 
 
-# Just in case
 
-## Student *t*-distribution
-
-<div style="float: left;width: 35%;">
-
-- Symmetric continuous distribution with fat tails assigning more probability to extreme values.
-- $\nu$ parameter controls the degrees of freedom 
-- $\nu = 1$ is a Cauchy distribution 
-- When $\nu \rightarrow \infty$ the *t*-distribution becomes Gaussian.
-
-</div>
-
-
-<div style="float: right;width: 60%;">
-
-```{r fig.width=6}
-library(LaplacesDemon)
-
-x <- seq(-10, 10, by = 0.1)
-
-tibble("t0" = dnorm(x, mean=0, sd=1),
-       "t1" = dst(x, mu=0, sigma=1, nu = 1),
-       "t2" = dst(x, mu=0, sigma=1, nu = 5),
-       "t3" = dst(x, mu=0, sigma=2, nu = 5),
-       x = x) %>%
-  pivot_longer(-x) %>%
-  ggplot(aes(x = x, y = value, colour = name)) +
-  geom_line() +
-  scale_x_continuous(limits = c(-7, 7)) +
-  scale_color_colorblind("Parameter values",
-                         breaks = paste0("t",0:3), 
-                         labels = c(bquote(mu==0*","~sigma==1),
-                                    bquote(mu==0*","~sigma==1*","~nu==1),
-                                    bquote(mu==0*","~sigma==1*","~nu==5),
-                                    bquote(mu==0*","~sigma==2*","~nu==5))) +
-  labs(x = "x", y = "density") +
-  theme(legend.justification = "top") 
-
-```
-</div>

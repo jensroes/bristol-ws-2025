@@ -7,7 +7,7 @@ output:
     transition: slower
     widescreen: true
     css: slides.css
-    logo: ../gfx/ntu.png
+#    logo: ../gfx/ntu.png
 bibliography      : ["../references.bib"]
 ---
 
