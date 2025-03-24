@@ -159,18 +159,6 @@ include_graphics("../gfx/markdown.png")
 
 
 
-## Key concepts and tools
-
-<div style="float: left; width: 40%;">
-
-```{r fig.align='left', out.width="90%", echo = F, eval = T}
-include_graphics("../gfx/latex.png")
-```
-
-</div>
-
-<div style="float: right; width: 60%;">
-
 
 
 ## Key concepts and tools {.smaller}
@@ -403,6 +391,7 @@ header-includes:
 
 - This format isn't good enough for papers.
 
+
 ## Formatted APA style tables
 
 ```{r eval = F}
@@ -457,10 +446,11 @@ model_summary <- summary(model)$coefficients
 Task: Use the `tab_model` function of the `sjPlot` package to create a nicely formatted table of the `model` object. Use cross-referencing as before to refer to the table from the text.
 
 
-```{r eval = F, echo = F}
-sjPlot::tab_model(model, title = "")
-```
+<!-- ## Table exercise -->
 
+<!-- ```{r} -->
+<!-- library(sjPlot) -->
+<!-- tab_model(model) -->
 
 
 
@@ -607,8 +597,8 @@ install.packages("rmdformats")
 - Create from template:
   - `File` > `New File` > `R Markdown` (e.g. `readthedown` or `robobook` for documents)
   - `rmdshower::shower_presentations` and `ioslides_presentation` for slides
-- [Rmarkdown example](https://rpubs.com/jensroes/765467)
-- Online sharing on RPubs ("Publish")
+- Online sharing on RPubs ("Publish"): [RMarkdown example](https://rpubs.com/jensroes/mixture-models-tutorial)
+
 
 
 ## APA7 manuscripts using `papaja`
