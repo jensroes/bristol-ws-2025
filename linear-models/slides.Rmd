@@ -39,19 +39,13 @@ theme_set(theme_bw(base_size = 18) +
 - Open this project by double clicking on `bristol-ws-2025.Rproj`
 
 
-
-
 ## Why generalised linear models?
 
-
 - Unified framework of advanced statistical techniques that covers a wider range of data-analysis problems.
-  - **Linear regression**
-  - **General linear models**: certain problems can be easily accommodated (e.g. varying slope models aka ANCOVA).
-  - **Generalised linear models**: transformations applied to linear models allows modelling of data-types including loglinear models, categorical, ordinal, discrete frequency data.
-  - **Multi-level generalised linear models**: data with inherently hierarchical structure (repeated measures.
-- Backbone of statistical modelling: machine learning, time series models, path analysis, structural equation models, factor analysis, signal detection models.
-- These models arise as special cases of a single underlying general principle.
-- Apply this general principle to a wider range of data analysis problems.
+  - **Linear regression** and **General linear models**
+  - **Generalised linear models**: transformation allows modelling of data-types including categorical, ordinal, count data.
+  - **Multi-level generalised linear models**: data with hierarchical structure (repeated measures).
+- Backbone of other advanced models: machine learning, time series models, path analysis, structural equation models, factor analysis, signal detection models.
 
 
 
@@ -70,30 +64,9 @@ $$
 </div>
 
 <div style="float: right; width: 65%;">
-Model of how the distribution of one variable, known as the *outcome variable*, varies as a function of other variables, known as the *explanatory* or *predictor variables*.
-</div>
-
-
-
-## Normal linear model (formal description)
-
-
-<div style="float: left; width: 30%;">
-
-$$
-\begin{aligned}
-y_i &\sim \mathcal{N}(\mu, \sigma^2)
-\end{aligned}
-$$
-</div>
-
-<div style="float: right; width: 65%;">
-- $y$: observed *outcome* variable
-- Each observation $y_i$ is a sample (indexed by $i$)
-- Lower case letters indicate observed variables.
-- "$\sim$": "is proportional to" / "is a function of"
-- $\mathcal{N}$: univariate normal distributed probability model; i.e. the underlying process that describes the nature of our data.
-- **Population parameters** are represented as Greek letters; i.e. mean $\mu$ and variance $\sigma^2$ (parameters depend on probability model and parameterisation).
+- Model of how the distribution of one variable, known as the *outcome*, varies as a function of other variables, known as *predictor*.
+- Each observation $y$ is a sample (indexed by $i$) from ("$\sim$") a univariate normally distributed probability model $\mathcal{N}$.
+- Greek letters are the parameters that describe this distibution: mean $\mu$ and standard deviation $\sigma^2$.
 </div>
 
 
@@ -111,14 +84,13 @@ $$
 </div>
 
 <div style="float: right; width: 65%;">
-Value of $\mu_i$ can be decomposed using a linear regression equation.
-
-- $\beta_1$ directly depends on explanatory variable $x_{1i}$
-- $\beta_0$ is "constant"
+- Linear regression equation allows decomposition: value of $\mu_i$ is a linear function of values of one (or more) predictor variable $x$.
+- Intercept $\beta_0$ is "constant"
+- Slope $\beta_1$ depends on predictor $x_{1i}$
 - If $x_{1i}$ takes on 0, $\mu_i = \beta_0$
 - If $x_{1i}$ takes on 1, $\mu_i = \beta_0 + \beta_1$
 - $\beta_1$ is the difference between $x_{1i}=1$ and $x_{1i}=0$.
-- Value of $\mu_i$ is deterministic ("$=$") linear function of values of one or more predictor variables $x$ and the unknowns $\beta_0$ (intercept) and $\beta_1$ (slope).
+
 </div>
 
 
@@ -126,13 +98,13 @@ Value of $\mu_i$ can be decomposed using a linear regression equation.
 
 ## Simulation of normal distributed data
 
-- We can use `lm` to easily implement such a model.
+We can use `lm` to implement such a model.
 
 ```{r eval = F}
 model <- lm(y ~ x, data = data)
 ```
 
-- We can simulate data that exactly meet model assumptions (normal distribution, equal variance, independence etc.) with known model parameters.
+We can simulate data that exactly meet model assumptions (normal distribution, equal variance, independence etc.) with known model parameters.
 
 
 
@@ -265,12 +237,11 @@ Exercise: complete script `normal_model_simulation.R`
 
 ## Real data 
 
-- In real life we don't know the true parameter values.
-- We also don't know the true process that generates the data.
-- For the simulated data we know the process that generated the data. 
+- By using linear models to estimate parameter values from data we make assumptions about the process that generates the data.
+- For simulated data we know the process that generated the data. 
     - normal distribution because `rnorm` samples normally distributed data
     - both groups have the same variance because `sigma` was the same.
-- We can use linear models to estimate parameter values from the data by which we make assumptions about the process that generates the data.
+- In real life we don't know the true parameter values or the underlying process that generates the data.
 
 
 # Real (hierarchical) data: @martin2010planning 
@@ -377,7 +348,7 @@ data_ppt %>%
 
 ## Model description
 
-Each rt observation $i \in 1 \dots N$ can be said to come a normal distribution with a mean $\mu$ and a standard deviation $\sigma^2$
+Each rt observation $i \in 1 \dots N$ comes from a normal distribution with a mean $\mu$ and a standard deviation $\sigma^2$.
 
 $$
 \text{rt}_i \sim \mathcal{N}(\mu_i, \sigma^2)\\
@@ -406,11 +377,13 @@ $\beta_0$ is the average `rt` for conjoined NPs because
 
 $\beta_0 + \beta_1 \cdot 0 = \beta_0$, 
 
-$\beta_1$ is the difference in rts between conjoined and simple NPs. Therefore, the average `rt` for simple NPs is 
+the average `rt` for simple NPs is 
 
 $\beta_0 + \beta_1 \cdot 1 = \beta_0 + \beta_1$,
 
-and finally $\text{ppt}_i \sim \mathcal{N}(0, \sigma^2_\text{ppt})$.
+and therefore $\beta_1$ is the difference in rts between conjoined and simple NPs. 
+
+Finally $\text{ppt}_i \sim \mathcal{N}(0, \sigma^2_\text{ppt})$.
 
 
 ## Model implementation in R
@@ -432,19 +405,9 @@ anova(m)
 ```
 
 
+Exercises: complete script `repeated_measures_model.R`
 
-
-
-
-## Exercise on repeated measures ANOVA
-
-Complete exercise script 
-
-`repeated_measures_model.R`
-
-and after that 
-
-`mixed_effects_model.R`
+and after that `mixed_effects_model.R`.
 
 
 ## Item variation (by-image sets means)
@@ -461,17 +424,6 @@ data %>%
   geom_line() +
   theme(legend.position = "none")
 ```
-
-
-
-## What's a mixed effects model?
-
-- Models with a combination of fixed (intercepts and slopes) and random effects: repeated measures ANOVA are a special type of mixed-effects models.
-- Fixed effects: systematic / deterministic effects (e.g. age, trial id, grouping variables)
-- Random effects: non-systematic effects (e.g. ppts, items, class, country)
-- Random effects can be nested: people within country; students within classroom within school within area etc.
-- Sometimes the differences can be blurry: comparing differences between two test sites rather than treating test sites as repeated measures variable.
-- Allows to address multi-level (hierarchical) and crossed structure in the data.
 
 
 ## Crossed participants and items
@@ -525,10 +477,23 @@ ggraph(layout) +
 ```
 
 
+
+## What's a mixed-effects model?
+
+- Combination of fixed and random effects
+- Allows to address dependency in the data: hierarchical (nested, multi-level) and crossed factor
+- Fixed effects: systematic / deterministic effects (e.g. age, trial id, grouping variables)
+- Random effects: non-systematic effects (e.g. ppts, items, class, country)
+- Random effects can be nested: people within country; students within classroom within school within area etc.
+- Sometimes the differences can be blurry: comparing differences between two test sites rather than treating test sites as repeated measures variable.
+
+
+
+
 ## Crossed participants and items
 
 - Traditional repeated-measures ANOVA can only handle one source of variance (participant or item).
-- Linear mixed-effects models can capture both (and more) [@baayen2008mixed].
+- Linear mixed-effects models can capture one and more [@baayen2008mixed].
 
 
 ```{r eval = F}
@@ -625,33 +590,31 @@ contrasts(factor(data$nptype))
 ## Null-hypothesis test for `lmer` models?
 
 
-*t*-values larger than |2| roughly correspond to a significance level of $\alpha = .05$ [@baa08book]
+*t*-values $> \mid 2 \mid$ correspond to $\alpha = .05$ [@baa08book]:
 
 ```{r}
 summary(m)$coef
 ```
 
-Likelihood-ratio test
+Confidence intervals: 95% CI shows the range of hypotheses that can't be ruled out for $\alpha = .05$:
 
 ```{r}
-m_null <- lmer(rt ~ 1 + ( 1 | ppt ) + ( 1 | item ), data = data)
-anova(m_null, m)
+confint(m, "nptypesimple")
 ```
 
-Satterthwaite approximation for degrees of freedom (`lmerTest`)
+Satterthwaite approximation for degrees of freedom (`lmerTest`):
 
 ```{r}
 m <- lmerTest::lmer(rt ~ nptype + ( 1 | ppt ) + ( 1 | item ), data = data)
 summary(m)$coef
 ```
 
-
-Confidence intervals: 95% CI shows the range of hypotheses that can't be ruled out for $\alpha = .05$
+Likelihood-ratio test:
 
 ```{r}
-confint(m, "nptypesimple")
+m_null <- lmer(rt ~ 1 + ( 1 | ppt ) + ( 1 | item ), data = data)
+anova(m_null, m)
 ```
-
 
 
 
@@ -674,7 +637,7 @@ ggplot(data_pred, aes(x = nptype, y = pred, group = item)) +
   labs(y = "predicted rt", caption = "Lines represent items")
 ```
 
-## Crossed random intercepts and random slopes model
+## Random intercepts and random slopes
 
 - Random intercepts: size of np-type effect is constant.
 - Random slopes: size of np-type effect varies by participants and items.
@@ -698,7 +661,7 @@ data_pred_cor <- expand.grid(item = 1:48, ppt = 1:12, nptype = unique(data$nptyp
 ```
 
 
-## Random intercepts and random slopes models 
+## Random intercepts and random slopes
 
 ```{r fig.width=8, fig.height=4.5, echo = F}
 bind_rows(data_pred, data_pred_cor) %>% 
@@ -719,7 +682,7 @@ bind_rows(data_pred, data_pred_cor) %>%
 ## Model summary
 
 ```{r}
-# Maximal random effects structure 
+# Maximal random effects model 
 summary(m_max)
 ```
 
@@ -727,7 +690,7 @@ summary(m_max)
 
 ## Hypothetical examples {.smaller}
 
-Task: Pair designs with their corresponding maximal random-effects structure!
+Task: Pair designs with their maximal random-effects structure!
 
 - Design 1 (between participants / within items): both NP type conditions were presented for each item set but half of the participants saw simple NPs and the other half saw conjoined NPs.
 - Design 2 (within participants / within items): each participant saw both conditions and each item was presented in both conditions.
@@ -890,21 +853,23 @@ $$
 
 
 
-## Its problems {.columns-2 .smaller}
+## Its problems {.columns-2}
 
+- Focus on significance: small effects can become significant when the sample is large enough.
 - People think of statistical significance as continuous not binary.
 - How often do we actuallybelieve in $H_0$?
 - What are you doing if $p=0.051$? 
-- Stopping rule
-- $\alpha$-level of 0.05 implies there is a 5% chance that:
-    - our effect isn't real. 
-    - we'll miss an effect that is real.
+    
 <!-- - This seems even worse in reality [@amrhein2019inferential;@loken2017measurement] -->
 
 \
 
-- Focus on significance: small effects can become significant when the sample is large enough.
-- Systematic misinterpretations of *p*-values [@colquhoun2017reproducibility; @greenland2016statistical] and CIs [@hoekstra2014robust; @morey2016fallacy].
+- Systematic misinterpretations of *p*-values [@colquhoun2017reproducibility; @greenland2016statistical] and CIs [@hoekstra2014robust; @morey2016fallacy]
+- Optional stopping [@kruschke2018rejecting]
+- $\alpha$-level of 0.05 implies there is a 5% chance that:
+    - our effect isn't real. 
+    - we'll miss an effect that is real.
+
 
 
 ## Bayesian inference
@@ -1370,10 +1335,10 @@ prior %>% as_tibble() %>%
   column_spec(2:4, width = "10em") 
 ```
 
-## Priors
 
+\
 
-```{r fig.width=5, echo = F}
+```{r fig.width=5, echo = F, fig.align='center'}
 p <- tibble(intercept = rstudent_t(10000, 3, 1039.5, 235),
        slope = runif(10000, -2000, 2000)) %>%
   ggplot(aes(x=intercept, y=slope)) +
@@ -1388,12 +1353,8 @@ ggExtra::ggMarginal(p, type="density", size=10, alpha = .25, margins = "both")
 ```
 
 
-## Exercise
 
-You will refit our model with more informative priors in the next script.
-
-- Complete script `mixed_effects_model_brms_with_priors.R` 
-
+Exercise: complete script `mixed_effects_model_brms_with_priors.R` (this time with priors)
 
 
 
@@ -1401,16 +1362,15 @@ You will refit our model with more informative priors in the next script.
 
 ## What results do I report?
 
-- Summary of posterior parameter value estimates
-- To test a hypothesis of parameter estimate (e.g. difference between groups, interactions, change in outcome):
-  - ROPE
-  - Savage-Dickey Bayes Factor: for comparison of nested models
-- For comparison of models with different probability functions: Cross-validation (leave-one-out)
+- To test a hypothesis about parameter values (e.g. difference between groups, interactions, change in outcome):
+  - Summary of posterior parameter value
+  - Region of practical equivalence (ROPE)
+  - Savage-Dickey Bayes Factor: for nested models
+- Cross-validation (leave-one-out): comparison of different probability models
 
 ## Posterior probability distribution
 
-
-- Get posterior of slope $\beta$ (difference between conditions)
+Get posterior of slope $\beta$ (difference between conditions)
 
 ```{r echo = T}
 beta <- as_draws_df(fit_brm) %>% pull(b_nptypesimple)
@@ -1444,7 +1404,7 @@ ggplot(data = NULL, aes(x = beta)) +
 
 <div style="float: left;width: 45%">
 
-- Posterior mean
+Posterior mean
 
 ```{r echo = T}
 mean(beta)
@@ -1467,7 +1427,7 @@ ggplot(data = NULL, aes(x = beta)) +
 
 <div style="float: left;width: 45%">
 
-- 95% probability interval (conceptually different from confidence interval)
+95% probability interval (conceptually different from confidence interval)
 
 ```{r echo = T}
 quantile(beta, probs = c(0.025, 0.975))
@@ -1492,13 +1452,13 @@ ggplot(data = NULL, aes(x = beta)) +
 
 <div style="float: left;width: 45%">
 
-- 95% probability interval (conceptually different from confidence interval)
+95% probability interval (conceptually different from confidence interval)
 
 ```{r echo = T}
 quantile(beta, probs = c(0.025, 0.975))
 ```
 
-- 89% probability interval [@mcelreath2020statistical]
+89% probability interval [@mcelreath2020statistical]
 
 ```{r echo = T}
 quantile(beta, probs = c(0.055, 0.945))
@@ -1523,20 +1483,18 @@ ggplot(data = NULL, aes(x = beta)) +
 
 <div style="float: left;width: 45%">
 
-- Probability that slope $\beta$ is negative: $P(\hat{\beta}<0)$
+Probability that slope $\beta$ is negative: $P(\hat{\beta}<0)$
 
 ```{r echo = T}
 mean(beta < 0)
 ```
 
-- See exercises: `hypothesis_testing_post.R`
 
 </div>
 
 <div style="float: right;width: 55%">
 
 ```{r fig.height=4.5, fig.width=5.5, echo = F}
-beta2 <- beta[beta < 0]
 ggplot(data = NULL, aes(x = beta, fill = beta > 0)) +
   geom_histogram(alpha = .55, bins = 50, position = "identity", show.legend = F) +
   scale_fill_manual(values = c("darkred", "grey")) +
@@ -1550,14 +1508,28 @@ ggplot(data = NULL, aes(x = beta, fill = beta > 0)) +
 
 <div style="float: left;width: 45%">
 
-- Probability that slope $\beta$ is negative: $P(\hat{\beta}<0)$
+Probability that slope $\beta$ is negative: $P(\hat{\beta}<0)$
 
 ```{r echo = T}
 mean(beta < -10)
 ```
 
+See exercises: `hypothesis_testing_post.R`
 
 </div>
+
+
+<div style="float: right;width: 55%">
+
+```{r fig.height=4.5, fig.width=5.5, echo = F}
+ggplot(data = NULL, aes(x = beta, fill = beta > -10)) +
+  geom_histogram(alpha = .55, bins = 50, position = "identity", show.legend = F) +
+  scale_fill_manual(values = c("darkred", "grey")) +
+  geom_vline(xintercept = -10, colour = "grey20", linetype = "dotted") +
+  labs(x = bquote("Estimated effect"~hat(beta))) 
+```
+</div>
+
 
 
 
@@ -1568,15 +1540,20 @@ mean(beta < -10)
 
 <div style="float: left;width: 40%">
 
-```{r echo = T}
-quantile(beta, probs = c(.025, .5, .975))
-```
-
 ```{r}
 mean(beta < 0)
 ```
 
-There is nothing really special about 0.
+```{r}
+mean(beta < -5)
+```
+
+```{r}
+mean(beta < -10)
+```
+
+
+There is nothing special about 0.
 
 </div>
 
@@ -1600,7 +1577,7 @@ ggplot(data = NULL, aes(x = beta, fill = beta > -10)) +
 
 - Point values don't represent our beliefs about the null hypothesis: $H_0 = 0$
 - Region of practical equivalence: range of values that are equivalent to a null effect [@kruschke2010believe; @kruschke2011bayesian].
-- Define region that is equivalent to no effect: values in interval of [-5, 5] msecs
+- Define region that is equivalent to no effect: values in interval of [-10, 10] msecs
 
 </div>
 
@@ -1620,12 +1597,12 @@ ggplot(data = NULL, aes(x = beta)) +
 
 - Point values don't represent our beliefs about the null hypothesis: $H_0 = 0$
 - Region of practical equivalence: range of values that are equivalent to a null effect [@kruschke2010believe; @kruschke2011bayesian].
-- Define region that is equivalent to no effect: values in interval of [-5, 5] msecs
+- Define region that is equivalent to no effect: values in interval of [-10, 10] msecs
 
 
 ```{r echo = T}
 library(bayestestR)
-rope(beta, range = c(-5, 5)) 
+rope(beta, range = c(-10, 10)) 
 ```
 </div>
 
@@ -1646,13 +1623,13 @@ ggplot(data = NULL, aes(x = beta)) +
   
 - Point values don't represent our beliefs about the null hypothesis: $H_0 = 0$
 - Region of practical equivalence: range of values that are equivalent to a null effect [@kruschke2010believe; @kruschke2011bayesian].
-- Define region that is equivalent to no effect: values in interval of [-5, 5] msecs
+- Define region that is equivalent to no effect: values in interval of [-10, 10] msecs
 
 
 
 ```{r echo = T}
 library(bayestestR)
-rope(beta, range = c(-5, 5)) 
+rope(beta, range = c(-10, 10)) 
 ```
 </div>
 
@@ -1660,10 +1637,10 @@ rope(beta, range = c(-5, 5))
 <div style="float: right;width: 45%">
 
 ```{r fig.height=4.5, fig.width=4.5, echo = F}
-ggplot(data = NULL, aes(x = beta, fill = beta > -5 & beta < 5)) +
+ggplot(data = NULL, aes(x = beta, fill = beta > -10 & beta < 10)) +
   geom_histogram(alpha = .55, bins = 50, position = "identity", show.legend = F) +
-  geom_vline(xintercept = 5, colour = "grey20", linetype = "dotted") +
-  geom_vline(xintercept = -5, colour = "grey20", linetype = "dotted") +
+  geom_vline(xintercept = 10, colour = "grey20", linetype = "dotted") +
+  geom_vline(xintercept = -10, colour = "grey20", linetype = "dotted") +
   scale_fill_manual(values = c("grey", "darkred")) +
   labs(x = bquote("Estimated effect"~hat(beta))) 
 ```

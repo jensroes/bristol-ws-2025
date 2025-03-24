@@ -27,10 +27,10 @@ library(kableExtra)
 
 <div style="float: left; width: 60%;">
 
->- Senior Lecturer in Psycholinguistics @ Psychology Department
->- Language production / comprehension / acquisition often with a focus on writing [e.g. @roeser2019advance; @garcia2023finding]
->- Bayesian modelling [@roeser2021modelling; @roeser2024typing]; keystroke logging; eyetracking
->- Teaching: advanced statistical modelling, data wrangling, data visualisation, R package [`psyntur`, @psyntur]
+- Senior Lecturer in Psycholinguistics @ Psychology Department
+- Language production / comprehension / acquisition often with a focus on writing [e.g. @roeser2019advance; @garcia2023finding]
+- Bayesian modelling of production time course data [@roeser2021modelling; @roeser2024typing]; keystroke logging; eyetracking
+- Teaching: advanced statistical modelling, data wrangling, data visualisation, R package [`psyntur`, @psyntur]
 
 </div>
 
@@ -47,10 +47,10 @@ knitr::include_graphics("../gfx/me2.jpg")
 ## How can you trust someone's results?
 
 - Results are communicated through reports such as peer reviewed scientific articles.
-- Reported results should be reproducible! -- Are they though?
-- Data and code should be made available to others -- Is this enough?
-- It is difficult to relate code to figures, tables, numbers etc. especially where numbers were copy-pasted from software into the text.
-- Also manual processing of data and generation of reports is error prone.
+- Analysis and results should be reproducible.
+- Data and code should be made publically available.
+- Often difficult to relate code to figures, tables, numbers in text.
+- Copy-pasting numbers from software into the text can be error prone.
 
 <!-- ## Rules for reproducible data analysis! -->
 
@@ -73,7 +73,7 @@ knitr::include_graphics("../gfx/me2.jpg")
 - Aimed to replicate important findings in psychological research.
 - Main finding: 36% where replicated; only 23% for Social Psychology
 - Reasons: small samples, pressure to publish sensational results.
-- Make Psychology Science Again: pre-registration, replications, large samples (power analysis), abandoning significance testing, transparency.
+- Make Psychology Science Again: pre-registration, replications, transparency, large samples (power analysis), abandoning significance testing.
 
 </div>
 
@@ -84,12 +84,12 @@ include_graphics("../gfx/rc.jpg")
 
 </div>
 
-## A truely reproducible report
+## Markdown: a truely reproducible report
 
 <div style="float: left; width: 55%;">
 
 - Data, code, report need be one unit.
-- Based on the concept of *literate programming* [@knuth1984literate]: text and code are linked in one ingle file to generate manual or computer program.
+- Based on the concept of *literate programming* [@knuth1984literate]: text and code are linked in one single file to generate manual or computer program.
 - This principle can be used to creating reproducible reports, sometimes known as *dynamic documents* [@xie2017dynamic].
 - RMarkdown is the best way of doing this using R.
 
@@ -120,10 +120,11 @@ include_graphics("../gfx/rmarkdown.png")
 <div style="float: right; width: 60%;">
 
 - Documentation of all analysis steps
+- Easy integration between R and text
 - Quickly updating and reproducing analysis
 - No copy-pasting between programmes
 - Producing texts, website, supplementary materials, APA-style manuscripts, slides
-- Easy cross-referencing 
+- Easy cross-referencing (citations)
 - Automatic reference lists
 - Easy type-setting of equations
 
@@ -158,23 +159,51 @@ include_graphics("../gfx/markdown.png")
 
 
 
-<!-- ## Key concepts and tools -->
+## Key concepts and tools
 
-<!-- <div style="float: left; width: 40%;"> -->
+<div style="float: left; width: 40%;">
 
-<!-- ```{r fig.align='left', out.width="90%", echo = F, eval = T} -->
-<!-- include_graphics("../gfx/latex.png") -->
-<!-- ``` -->
+```{r fig.align='left', out.width="90%", echo = F, eval = T}
+include_graphics("../gfx/latex.png")
+```
 
-<!-- </div> -->
+</div>
 
-<!-- <div style="float: right; width: 60%;"> -->
+<div style="float: right; width: 60%;">
 
-<!-- - Document preparation system for creating high quality technical and scientific documents. -->
-<!-- - Widely used in statistics, computer science, physics -->
-<!-- - $\LaTeX$ documents are written in a `.tex` source code file and rendered to pdf -->
 
-<!-- </div> -->
+
+## Key concepts and tools {.smaller}
+
+<div style="float: left; width: 40%;">
+
+```{r fig.align='left', out.width="90%", echo = F, eval = T}
+include_graphics("../gfx/latex.png")
+```
+
+</div>
+
+<div style="float: right; width: 50%;">
+
+- Document preparation system for creating high quality technical and scientific documents especially when involving mathematical formulas and technical diagrams.
+- Great for cross referencing (citations, figure labels) and automatic generation of content tables, reference lists.
+- Widely used in statistics, computer science, physics
+- $\LaTeX$ documents are written in a `.tex` source code file and rendered to pdf
+
+</div>
+
+
+## Outline
+
+- Setup
+- Examples
+- YAML preamble and chunk options
+- Headers
+- Figures and tables
+- Cross-referencing
+- Referencing
+- In-line R output
+- Mathematical typesetting
 
 
 ## Download repository
@@ -182,7 +211,7 @@ include_graphics("../gfx/markdown.png")
 - Go to [github.com/jensroes/bristol-ws-2025](https://github.com/jensroes/bristol-ws-2025)
 - Click on: `Code` \> `Download ZIP` \> unzip directory on your machine.
 - Open project by double clicking on `bristol-ws-2025.Rproj`
-
+- Use slides for code
 
 
 ## Installation 
@@ -261,7 +290,8 @@ rmarkdown::render('test.Rmd', output_format = 'pdf_document')
 - `output: pdf_document`: use pdfs for writing manuscripts   
 - Name your RMarkdown: `my-practice-markdown.Rmd`
 - Save in same directory as `.Rproj` file.
-
+- YAML header between `'---'`s 
+- YAML = YAML Ain’t a Markup Language (o Yet Another Markup Language)
 
 
 ## Load data
@@ -368,10 +398,7 @@ header-includes:
 - Calculate descriptive summary stats:
 
 ```{r}
-(rt_stats <- summarise(data, across(rt, list(mean = mean, 
-                                               sd = sd), 
-                              .names = "{fn}"),
-                         .by = nptype))
+(rt_stats <- summarise(data, across(rt, list(mean = mean, sd = sd)), .by = nptype))
 ```
 
 - This format isn't good enough for papers.
@@ -380,30 +407,31 @@ header-includes:
 
 ```{r eval = F}
 library(kableExtra)
-rt_stats %>% 
-  kable(format = 'latex',
-        booktabs = TRUE,
-        digits = 2,
-        align = 'c', # centre value in each column
-        caption = 'Descriptive summary statistics of reaction time by NP type.') %>% 
+kable(rt_stats,
+      format = 'latex',
+      booktabs = TRUE,
+      digits = 2,
+      align = 'c', # centre value in each column
+      caption = 'Descriptive summary statistics of reaction time by NP type.') %>% 
   kable_styling(position = 'center') # centre position of table
 ```
 
-- Also, label your chunk "`rtstats`" and cross-reference the table in the text using `Table \ref{tab:rtstats}`.
+Also, label your chunk "`rtstats`" and cross-reference the table in the text using `Table \ref{tab:rtstats}`.
 
 
 
 
 ## Bibliography and citations
 
-- Add to the YAML preamble:
+Add to the YAML preamble:
 
 ```{r eval = F}
 bibliography: refs.bib
 biblio-style: apalike
 ```
 
-- Create a file (in RStudio) called `refs.bib` (save in same working directory as your `.Rmd` file)
+Create a file (in RStudio) called `refs.bib` (save in same working directory as your `.Rmd` file)
+
 
 ## Bibliography and citations
 
