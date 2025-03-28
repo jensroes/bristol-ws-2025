@@ -839,12 +839,13 @@ fixef(fit_brm) # Coefficients of Bayesian model
 
 ## Two universes
 
+Two different philosophical frameworks of generalising from sample to the population: What do the data tell us about "the truth"?
+
 - **Null-hypothesis significance testing**
 - **Bayesian inference**
 
-\
 
- Two different ways of generalising from sample to the population: What do the data tell us about the truth?
+
 
 
 ## Null-hypothesis significance testing 
@@ -898,7 +899,7 @@ $$
 $$
 
 - Likelihood: probability of data given the model parameter value(s) 
-- Prior: what did we already know about model parameter(s)
+- Prior: what do we already know about model parameter(s)
 - Posterior: our updated belief in the parameter value(s) after seeing the data
 
 
@@ -941,14 +942,15 @@ It tells us what we want to know!
 
 ## Why is Bayesian inference important?
 
-- Estimate uncertainty over parameter values based on the observed data [@kruschke2014doing].
+- Estimate the posterior uncertainty over parameter values based on the observed data [@kruschke2014doing].
 - For this we need 
 
 1. a probability model (e.g. a normal distribution and a set of predictors)
-2. a *prior* (on e.g. means, difference, variability)
+2. *priors* (on e.g. means, difference, variability)
 
 - `brms` uses probabilistic sampling to determine the posterior uncertainty about the parameter value.
-- This involve calculating the weighted probability of the data in a potentially high dimensional parameter space (which can take time).
+- This involve calculating the weighted probability of the likelihood of the data given a proposed parameter value in the (potentially high dimensional) parameter space.
+- This can take time.
 
 
 
@@ -984,7 +986,7 @@ By default:
 <div style="float: left;width: 40%">
 
 - **Hamiltonian Monte Carlo:** Markov chain Monte Carlo method for obtaining random samples.
-- Probability of random samples is estimated given the data and the prior.
+- Likelihood of random samples is estimated given the data and the prior.
 - Direction changes if probability of proposed estimate is lower than previous one.
 
 </div>
@@ -1193,7 +1195,7 @@ tibble(intercept = runif(1000, 0, 5000),
 
 - Can rts range between -$\infty$ and $\infty$? 
 - What are plausible lower and upper end?
-- Plausible probability distribution for pre-sentence pauses:
+- Plausible probability distribution for rts:
 
 $$
 \beta_0 \sim \mathcal{N}(1000 \text{ msecs}, ???)
@@ -1226,8 +1228,8 @@ tibble(intercept = runif(1000, 0, 5000),
 
 - Can rts range between -$\infty$ and $\infty$? 
 - What are plausible lower and upper end?
-- Plausible probability distribution for pre-sentence pauses:
-
+- Plausible probability distribution for rts:
+  
 $$
 \beta_0 \sim \mathcal{N}(1000 \text{ msecs}, 150\text{ msecs})
 $$
@@ -1263,14 +1265,14 @@ ggExtra::ggMarginal(p, type="density", size=10, alpha = .25, margins = "x")
 - How large are rt differences usually? Anything larger than 200 msecs would be massive, so lets propose a humble standard deviation of 100 msecs
 
 $$
-\beta_1 \sim \mathcal{N}(0\text{ msecs}, 510\text{ msecs})
+\beta_1 \sim \mathcal{N}(0\text{ msecs}, 100\text{ msecs})
 $$
 </div>
 
 <div style="float: right;width: 50%;">
 
 ```{r fig.width=5, echo = F}
-p <- tibble(intercept = rnorm(10000, mean = 1000, sd = 250),
+p <- tibble(intercept = rnorm(10000, mean = 1000, sd = 150),
        slope = runif(10000,  -10000, 10000)) %>%
   ggplot(aes(x=intercept, y=slope)) +
     geom_point(size = .25, colour = "transparent") + 
@@ -1303,7 +1305,7 @@ $$
 <div style="float: right;width: 50%;">
 
 ```{r fig.width=5, echo = F}
-p <- tibble(intercept = rnorm(10000, mean = 1000, sd = 500),
+p <- tibble(intercept = rnorm(10000, mean = 1000, sd = 150),
        slope = rnorm(10000,  0, 100)) %>%
   ggplot(aes(x=intercept, y=slope)) +
     geom_point(size = .25, colour = "transparent") + 
@@ -2028,7 +2030,7 @@ hypothesis(fit_brm, "nptypesimple < -10")
 
 \
 
->"Models are devices that connect theories to data.  A model is an instantiation of a theory [...]" [@rouder2016interplay p. 2] 
+"Models are devices that connect theories to data. A model is an instantiation of a theory [...]" [@rouder2016interplay] 
 
 \
 
