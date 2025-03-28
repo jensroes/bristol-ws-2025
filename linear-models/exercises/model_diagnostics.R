@@ -42,10 +42,10 @@ mcmc_plot(---, type = "---")
 mcmc_plot(fit_brm, variable = c("---", "---"), type = "---")
 
 # If the chains for a parameter mixed nicely, we would expect that R-hat is smaller than 1.1
-rhat(---) # use the name of the model object
+brms::rhat(---) # use the name of the model object
 
 # Lets focus the parameters of interest called "b_Intercept" and "b_nptypesimple":
-rhat(---, pars = c("---", "---"))
+brms::rhat(---, pars = c("---", "---"))
 
 
 # Compare the posterior predicted data y_rep against the real data y
