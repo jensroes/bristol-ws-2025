@@ -1,6 +1,11 @@
+# Preamble ----------------------------------------------------------------
+# For demo purposes please restart your RSession:
+# From the menu click on: Session > Restart R
+
+
+# Actual exercise is starting here ----------------------------------------
 # Load libraries
 library(tidyverse)
-library(afex) # for repeated measures ANOVA
 library(lme4) # for linear mixed effects models
 
 # Load data

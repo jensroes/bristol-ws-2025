@@ -241,6 +241,7 @@ Exercise: complete script `normal_model_simulation.R`
 - For simulated data we know the process that generated the data. 
     - normal distribution because `rnorm` samples normally distributed data
     - both groups have the same variance because `sigma` was the same.
+- Even if we know that assumptions are met, parameter estimates obtained are not identical but similar to the true parameter values.
 - In real life we don't know the true parameter values or the underlying process that generates the data.
 
 
@@ -262,7 +263,11 @@ p1 + p2
 ```
 
 ```{r}
-(data <- read_csv("../data/martin-etal-2010-exp3a.csv"))
+data <- read_csv("../data/martin-etal-2010-exp3a.csv")
+```
+
+```{r echo = FALSE}
+data
 ```
 
 
@@ -278,7 +283,11 @@ In standard repeated measures ANOVAs only one source of variance can be modelled
 For example one would aggregate across items and by-participant neglecting the by-items variance.
 
 ```{r}
-(data_ppt <- summarise(data, rt = mean(rt), .by = c(nptype, ppt)))
+data_ppt <- summarise(data, rt = mean(rt), .by = c(nptype, ppt))
+```
+
+```{r echo = FALSE}
+data_ppt %>% arrange(ppt)
 ```
 
 
@@ -857,7 +866,7 @@ $$
 
 - Focus on significance: small effects can become significant when the sample is large enough.
 - People think of statistical significance as continuous not binary.
-- How often do we actuallybelieve in $H_0$?
+- How often do we actually believe in $H_0$?
 - What are you doing if $p=0.051$? 
     
 <!-- - This seems even worse in reality [@amrhein2019inferential;@loken2017measurement] -->
@@ -882,7 +891,7 @@ Pr(H \mid \text{data})
 $$
 
 
-## Terminology: Bayes' Theorem 
+## Bayes' Theorem 
 
 $$
 \underbrace{Pr(\theta \mid \text{data})}_{\text{posterior}} \propto \underbrace{Pr(\theta)}_{\text{prior}} \cdot \underbrace{Pr(\text{data} \mid \theta)}_{\text{likelihood}}
@@ -963,7 +972,6 @@ By default:
 - 2,000 iterations for parameter estimation per chain 
 - `iterations / 2` warm-up samples: discarded eventually 
 - 4 chains to establish convergence
-- Change `cores` (check `parallel::detectCores()`) for running chains in parallel.
 - How many posterior samples have we got for inference (`= chains * (iterations - warm-up)`)?
 - How many iterations / chains do you need?
 
@@ -1018,8 +1026,8 @@ pivot_wider(samples, names_from = name, values_from = value) %>%
 
 
 - **Hamiltonian Monte Carlo:** Markov chain Monte Carlo method for obtaining random samples.
-- Probability of random samples is estimated given the data and the prior.
-- Direction changes if probability of proposed estimate is lower than previous one.
+- Likelihood of a random sample is estimated given the data and the prior.
+- Direction changes if probability of proposed sample is lower than previous one.
 
 
 </div>

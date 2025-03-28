@@ -1,6 +1,5 @@
 # Load library
 library(tidyverse)
-library(emmeans)
 
 # Tasks:
 # Go through and complete the script
