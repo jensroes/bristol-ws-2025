@@ -44,10 +44,7 @@ anova(---, ---) # add both model names starting with the simpler (i.e. the neste
 # check ?lmerTest for reference
 library(lmerTest) # load library
 
-# Rerun model
-m_rirs <- lmer(rt ~ nptype + ( --- | --- ) + ( --- | --- ), data = data)
-
-# Check out the model coefficients again
+# Check out the model coefficients of the random intercepts and random slopes model again:
 summary(---)$coefficients # et voila! you got your p-value for the nptype effect
 
 # Obtain the 95% confidence interval for nptype
